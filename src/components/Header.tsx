@@ -16,10 +16,10 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#f7f5f2]/90 backdrop-blur-md border-b border-stone-200/50">
       <nav className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-serif text-xl md:text-2xl tracking-wider text-stone-700">
+        <Link href="/" className="font-serif text-xl md:text-2xl tracking-[0.15em] text-stone-700 font-light">
           WeiChieh
         </Link>
-        <div className="flex gap-4 md:gap-8 text-sm tracking-widest uppercase text-stone-400">
+        <div className="flex gap-4 md:gap-8 text-xs tracking-[0.2em] uppercase text-stone-400 font-light">
           <Link
             href="/"
             className={isActive("/") ? "text-[#5a8a87]" : "hover:text-[#5a8a87] transition-colors duration-500"}

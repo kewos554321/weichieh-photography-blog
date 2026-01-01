@@ -54,33 +54,44 @@ npm run lint     # Run ESLint
 - `@/*` maps to `./src/*`
 
 ### Fonts
-- Primary: Geist Sans (`--font-geist-sans`)
-- Monospace: Geist Mono (`--font-geist-mono`)
+- **English Serif**: Cormorant Garamond (`--font-serif`) - elegant headings
+- **English Sans**: Inter (`--font-sans`) - clean body text
+- **Chinese Serif**: Noto Serif TC / 思源宋體 (`--font-serif-tc`) - headings
+- **Chinese Sans**: Noto Sans TC / 思源黑體 (`--font-sans-tc`) - body text
 
 ---
 
 ## UI/UX Design Guidelines
 
 ### Design Philosophy
-- **Minimalist & Clean**: Let photos be the focus, minimal UI distractions
-- **Stone Color Palette**: Use `stone-50` to `stone-900` for consistency
-- **Serif for Headings**: Font-serif for titles, sans-serif for body text
-- **Subtle Interactions**: Gentle hover effects (scale, opacity transitions)
+- **Japanese Minimalism**: Clean, simple, let photos speak
+- **Cinematic Film Look**: Subtle film grain + vignette overlays
+- **Fuji Film Colors**: Teal shadows + amber highlights
+- **Elegant Typography**: Cormorant Garamond + Noto Serif TC
+- **Subtle Interactions**: Slow 500-700ms transitions
 
 ### Color Scheme
 ```
-Background:    stone-50 (#fafaf9)
-Text Primary:  stone-900 (#1c1917)
+Background:     #f7f5f2 (warm cream)
+Text Primary:   stone-700 (#44403c)
 Text Secondary: stone-500 (#78716c)
-Text Muted:    stone-400 (#a8a29e)
-Borders:       stone-200 (#e7e5e4)
+Text Muted:     stone-400 (#a8a29e)
+Accent Teal:    #5a8a87 (Fuji film teal)
+Accent Amber:   #c9a77c (warm highlight)
+Borders:        stone-200/50 (subtle)
 ```
 
+### Cinematic Effects (globals.css)
+- **Film Grain**: Subtle noise overlay (opacity 0.035)
+- **Vignette**: Radial gradient darkening edges
+- **Image Hover**: Contrast/saturation adjustments
+
 ### Typography
-- **Logo/Brand**: font-serif, text-2xl (desktop), text-xl (mobile)
-- **Page Titles**: font-serif, text-4xl to text-5xl
-- **Body Text**: text-base to text-lg, leading-relaxed
-- **Meta Info**: text-sm, tracking-widest, text-stone-400
+- **Logo/Brand**: font-serif, text-2xl, tracking-[0.15em], font-light
+- **Page Titles**: font-serif, text-4xl to text-5xl, font-normal
+- **Body Text**: text-base to text-lg, font-light (300), leading-relaxed
+- **Meta Info**: text-xs, tracking-[0.2em], uppercase, font-light
+- **Transitions**: duration-500 to duration-700 for cinematic feel
 
 ### Layout Patterns
 
