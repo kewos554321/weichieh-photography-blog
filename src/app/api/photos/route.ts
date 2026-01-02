@@ -6,10 +6,20 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const tag = searchParams.get("tag");
+    const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const where = category && category !== "All" ? { category } : {};
+    const where: Record<string, unknown> = {};
+    if (category && category !== "All") where.category = category;
+    if (tag) where.tags = { some: { name: tag } };
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { location: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
     const [photos, total] = await Promise.all([
       prisma.photo.findMany({
@@ -17,6 +27,9 @@ export async function GET(request: NextRequest) {
         orderBy: { date: "desc" },
         take: limit,
         skip: offset,
+        include: {
+          tags: true,
+        },
       }),
       prisma.photo.count({ where }),
     ]);
@@ -66,6 +79,14 @@ export async function POST(request: NextRequest) {
         lens: body.lens || null,
         story,
         behindTheScene: body.behindTheScene || null,
+        ...(body.tagIds && {
+          tags: {
+            connect: body.tagIds.map((id: number) => ({ id })),
+          },
+        }),
+      },
+      include: {
+        tags: true,
       },
     });
 

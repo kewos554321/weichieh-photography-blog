@@ -6,13 +6,22 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
+    const tag = searchParams.get("tag");
+    const search = searchParams.get("search");
     const published = searchParams.get("published");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
 
     const where: Record<string, unknown> = {};
     if (category && category !== "全部") where.category = category;
+    if (tag) where.tags = { some: { name: tag } };
     if (published !== null) where.published = published === "true";
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { excerpt: { contains: search, mode: "insensitive" } },
+      ];
+    }
 
     const [articles, total] = await Promise.all([
       prisma.article.findMany({
@@ -20,16 +29,8 @@ export async function GET(request: NextRequest) {
         orderBy: { date: "desc" },
         take: limit,
         skip: offset,
-        select: {
-          id: true,
-          slug: true,
-          title: true,
-          excerpt: true,
-          cover: true,
-          category: true,
-          readTime: true,
-          date: true,
-          published: true,
+        include: {
+          tags: true,
         },
       }),
       prisma.article.count({ where }),
@@ -81,6 +82,14 @@ export async function POST(request: NextRequest) {
         readTime,
         date: body.date ? new Date(body.date) : new Date(),
         published: body.published ?? false,
+        ...(body.tagIds && {
+          tags: {
+            connect: body.tagIds.map((id: number) => ({ id })),
+          },
+        }),
+      },
+      include: {
+        tags: true,
       },
     });
 

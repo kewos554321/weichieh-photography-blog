@@ -20,6 +20,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const photo = await prisma.photo.findUnique({
       where: { slug },
+      include: {
+        tags: true,
+      },
     });
 
     if (!photo) {
@@ -54,6 +57,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         story: body.story,
         behindTheScene: body.behindTheScene,
         ...(body.src && { src: body.src }),
+        ...(body.tagIds !== undefined && {
+          tags: {
+            set: body.tagIds.map((id: number) => ({ id })),
+          },
+        }),
+      },
+      include: {
+        tags: true,
       },
     });
 

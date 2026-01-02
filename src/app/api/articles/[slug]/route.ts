@@ -20,6 +20,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const article = await prisma.article.findUnique({
       where: { slug },
+      include: {
+        tags: true,
+      },
     });
 
     if (!article) {
@@ -58,6 +61,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         published: body.published,
         ...(readTime && { readTime }),
         ...(body.cover && { cover: body.cover }),
+        ...(body.tagIds !== undefined && {
+          tags: {
+            set: body.tagIds.map((id: number) => ({ id })),
+          },
+        }),
+      },
+      include: {
+        tags: true,
       },
     });
 

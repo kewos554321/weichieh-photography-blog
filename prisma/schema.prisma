@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Photo {
-  id             Int      @id @default(autoincrement())
-  slug           String   @unique
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique
   title          String
   src            String
   category       String
@@ -17,30 +17,46 @@ model Photo {
   date           DateTime
   camera         String?
   lens           String?
-  story          String   @db.Text
-  behindTheScene String?  @db.Text
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  story          String     @db.Text
+  behindTheScene String?    @db.Text
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  tags           PhotoTag[]
 
   @@index([category])
   @@index([date])
 }
 
-model Article {
+model PhotoTag {
   id        Int      @id @default(autoincrement())
-  slug      String   @unique
+  name      String   @unique
+  photos    Photo[]
+  createdAt DateTime @default(now())
+}
+
+model Article {
+  id        Int          @id @default(autoincrement())
+  slug      String       @unique
   title     String
-  excerpt   String   @db.Text
-  content   String   @db.Text
+  excerpt   String       @db.Text
+  content   String       @db.Text
   cover     String
   category  String
   readTime  Int
   date      DateTime
-  published Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  published Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  tags      ArticleTag[]
 
   @@index([category])
   @@index([date])
   @@index([published])
+}
+
+model ArticleTag {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  articles  Article[]
+  createdAt DateTime  @default(now())
 }
