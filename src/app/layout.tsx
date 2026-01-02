@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="zh-TW">
       <body
-        className={`${cormorant.variable} ${inter.variable} ${notoSerifTC.variable} ${notoSansTC.variable} antialiased bg-[#f7f5f2] text-stone-800 min-h-screen flex flex-col`}
+        className={`${cormorant.variable} ${inter.variable} ${notoSerifTC.variable} ${notoSansTC.variable} antialiased bg-[#fafaf8] text-stone-800 min-h-screen flex flex-col`}
       >
         {/* Cinematic overlays */}
         <div className="vignette" />
