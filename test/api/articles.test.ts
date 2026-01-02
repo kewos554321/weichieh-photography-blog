@@ -14,14 +14,14 @@ describe("Articles API", () => {
   });
 
   describe("GET /api/articles", () => {
-    it("should return articles list", async () => {
+    it("should return articles list with admin=true", async () => {
       const mockArticles = [
         { id: 1, slug: "article-1", title: "Article 1", tags: [] },
       ];
       mockPrisma.article.findMany.mockResolvedValue(mockArticles);
       mockPrisma.article.count.mockResolvedValue(1);
 
-      const request = new NextRequest("http://localhost/api/articles");
+      const request = new NextRequest("http://localhost/api/articles?admin=true");
       const response = await GET(request);
       const data = await response.json();
 
@@ -29,12 +29,36 @@ describe("Articles API", () => {
       expect(data.total).toBe(1);
     });
 
+    it("should filter by status for public requests", async () => {
+      mockPrisma.article.findMany.mockResolvedValue([]);
+      mockPrisma.article.count.mockResolvedValue(0);
+
+      const request = new NextRequest("http://localhost/api/articles");
+      await GET(request);
+
+      expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "published",
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  { publishedAt: null },
+                  { publishedAt: expect.objectContaining({ lte: expect.any(Date) }) },
+                ]),
+              }),
+            ]),
+          }),
+        })
+      );
+    });
+
     it("should filter by category", async () => {
       mockPrisma.article.findMany.mockResolvedValue([]);
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?category=技巧分享"
+        "http://localhost/api/articles?category=技巧分享&admin=true"
       );
       await GET(request);
 
@@ -45,12 +69,12 @@ describe("Articles API", () => {
       );
     });
 
-    it("should not filter when category is 全部", async () => {
+    it("should not filter category when 全部 (admin mode)", async () => {
       mockPrisma.article.findMany.mockResolvedValue([]);
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?category=全部"
+        "http://localhost/api/articles?category=全部&admin=true"
       );
       await GET(request);
 
@@ -66,7 +90,7 @@ describe("Articles API", () => {
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?tag=Tutorial"
+        "http://localhost/api/articles?tag=Tutorial&admin=true"
       );
       await GET(request);
 
@@ -79,18 +103,18 @@ describe("Articles API", () => {
       );
     });
 
-    it("should filter by published status", async () => {
+    it("should filter by status query param", async () => {
       mockPrisma.article.findMany.mockResolvedValue([]);
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?published=true"
+        "http://localhost/api/articles?status=draft&admin=true"
       );
       await GET(request);
 
       expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ published: true }),
+          where: expect.objectContaining({ status: "draft" }),
         })
       );
     });
@@ -100,7 +124,7 @@ describe("Articles API", () => {
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?search=photography"
+        "http://localhost/api/articles?search=photography&admin=true"
       );
       await GET(request);
 
@@ -121,7 +145,7 @@ describe("Articles API", () => {
       mockPrisma.article.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/articles?limit=5&offset=10"
+        "http://localhost/api/articles?limit=5&offset=10&admin=true"
       );
       await GET(request);
 
@@ -136,7 +160,7 @@ describe("Articles API", () => {
     it("should handle errors", async () => {
       mockPrisma.article.findMany.mockRejectedValue(new Error("DB error"));
 
-      const request = new NextRequest("http://localhost/api/articles");
+      const request = new NextRequest("http://localhost/api/articles?admin=true");
       const response = await GET(request);
       const data = await response.json();
 
@@ -214,14 +238,14 @@ describe("Articles API", () => {
       );
     });
 
-    it("should create article with published status", async () => {
-      const mockArticle = { id: 1, ...validArticleData, published: true, tags: [] };
+    it("should create article with status", async () => {
+      const mockArticle = { id: 1, ...validArticleData, status: "published", tags: [] };
       mockPrisma.article.findUnique.mockResolvedValue(null);
       mockPrisma.article.create.mockResolvedValue(mockArticle);
 
       const request = new NextRequest("http://localhost/api/articles", {
         method: "POST",
-        body: JSON.stringify({ ...validArticleData, published: true }),
+        body: JSON.stringify({ ...validArticleData, status: "published" }),
       });
 
       await POST(request);
@@ -229,7 +253,30 @@ describe("Articles API", () => {
       expect(mockPrisma.article.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            published: true,
+            status: "published",
+          }),
+        })
+      );
+    });
+
+    it("should create article with scheduled publishedAt", async () => {
+      const publishedAt = "2025-06-15T10:00:00";
+      const mockArticle = { id: 1, ...validArticleData, status: "scheduled", tags: [] };
+      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockPrisma.article.create.mockResolvedValue(mockArticle);
+
+      const request = new NextRequest("http://localhost/api/articles", {
+        method: "POST",
+        body: JSON.stringify({ ...validArticleData, status: "scheduled", publishedAt }),
+      });
+
+      await POST(request);
+
+      expect(mockPrisma.article.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "scheduled",
+            publishedAt: new Date(publishedAt),
           }),
         })
       );

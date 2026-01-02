@@ -17,6 +17,8 @@ const S3 = new S3Client({
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
+    const { searchParams } = new URL(request.url);
+    const admin = searchParams.get("admin") === "true";
 
     const photo = await prisma.photo.findUnique({
       where: { slug },
@@ -27,6 +29,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!photo) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+
+    // 非管理員只能查看已發佈且發佈時間已到的內容
+    if (!admin) {
+      const isPublished = photo.status === "published";
+      const isScheduleReady =
+        !photo.publishedAt || photo.publishedAt <= new Date();
+      if (!isPublished || !isScheduleReady) {
+        return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+      }
     }
 
     return NextResponse.json(photo);
@@ -56,6 +68,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         lens: body.lens,
         story: body.story,
         behindTheScene: body.behindTheScene,
+        status: body.status,
+        publishedAt:
+          body.publishedAt !== undefined
+            ? body.publishedAt
+              ? new Date(body.publishedAt)
+              : null
+            : undefined,
         ...(body.src && { src: body.src }),
         ...(body.tagIds !== undefined && {
           tags: {

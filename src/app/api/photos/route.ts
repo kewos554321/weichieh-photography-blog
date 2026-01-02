@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const tag = searchParams.get("tag");
     const search = searchParams.get("search");
+    const status = searchParams.get("status");
+    const admin = searchParams.get("admin") === "true";
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
@@ -18,6 +20,22 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
         { location: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // 狀態篩選
+    if (status) {
+      where.status = status;
+    } else if (!admin) {
+      // 公開頁面只顯示已發佈且發佈時間已到的內容
+      where.status = "published";
+      where.AND = [
+        {
+          OR: [
+            { publishedAt: null },
+            { publishedAt: { lte: new Date() } },
+          ],
+        },
       ];
     }
 
@@ -79,6 +97,8 @@ export async function POST(request: NextRequest) {
         lens: body.lens || null,
         story,
         behindTheScene: body.behindTheScene || null,
+        status: body.status || "draft",
+        publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
         ...(body.tagIds && {
           tags: {
             connect: body.tagIds.map((id: number) => ({ id })),

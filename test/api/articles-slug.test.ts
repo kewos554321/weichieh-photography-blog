@@ -45,11 +45,13 @@ describe("Articles [slug] API", () => {
   });
 
   describe("GET /api/articles/[slug]", () => {
-    it("should return an article", async () => {
+    it("should return a published article", async () => {
       const mockArticle = {
         id: 1,
         slug: "test-article",
         title: "Test Article",
+        status: "published",
+        publishedAt: null,
         tags: [],
       };
       mockPrisma.article.findUnique.mockResolvedValue(mockArticle);
@@ -65,6 +67,67 @@ describe("Articles [slug] API", () => {
         where: { slug: "test-article" },
         include: { tags: true },
       });
+    });
+
+    it("should return 404 for unpublished article without admin", async () => {
+      const mockArticle = {
+        id: 1,
+        slug: "test-article",
+        status: "draft",
+        publishedAt: null,
+        tags: [],
+      };
+      mockPrisma.article.findUnique.mockResolvedValue(mockArticle);
+
+      const response = await GET(
+        createRequest("test-article"),
+        createParams("test-article")
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe("Article not found");
+    });
+
+    it("should return unpublished article with admin=true", async () => {
+      const mockArticle = {
+        id: 1,
+        slug: "test-article",
+        status: "draft",
+        publishedAt: null,
+        tags: [],
+      };
+      mockPrisma.article.findUnique.mockResolvedValue(mockArticle);
+
+      const response = await GET(
+        new NextRequest("http://localhost/api/articles/test-article?admin=true"),
+        createParams("test-article")
+      );
+      const data = await response.json();
+
+      expect(data).toEqual(mockArticle);
+    });
+
+    it("should return 404 for scheduled article not yet due", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const mockArticle = {
+        id: 1,
+        slug: "test-article",
+        status: "published",
+        publishedAt: futureDate,
+        tags: [],
+      };
+      mockPrisma.article.findUnique.mockResolvedValue(mockArticle);
+
+      const response = await GET(
+        createRequest("test-article"),
+        createParams("test-article")
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe("Article not found");
     });
 
     it("should return 404 if article not found", async () => {
@@ -172,6 +235,79 @@ describe("Articles [slug] API", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             date: new Date("2024-06-15"),
+          }),
+        })
+      );
+    });
+
+    it("should not update date when not provided", async () => {
+      const mockArticle = { id: 1, slug: "test-article" };
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+
+      await PUT(
+        createRequest("test-article", "PUT", { title: "Test" }),
+        createParams("test-article")
+      );
+
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            date: undefined,
+          }),
+        })
+      );
+    });
+
+    it("should update status", async () => {
+      const mockArticle = { id: 1, slug: "test-article", status: "published" };
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+
+      await PUT(
+        createRequest("test-article", "PUT", { status: "published" }),
+        createParams("test-article")
+      );
+
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "published",
+          }),
+        })
+      );
+    });
+
+    it("should update publishedAt", async () => {
+      const publishedAt = "2025-06-15T10:00:00";
+      const mockArticle = { id: 1, slug: "test-article", publishedAt: new Date(publishedAt) };
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+
+      await PUT(
+        createRequest("test-article", "PUT", { publishedAt }),
+        createParams("test-article")
+      );
+
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            publishedAt: new Date(publishedAt),
+          }),
+        })
+      );
+    });
+
+    it("should clear publishedAt when set to null", async () => {
+      const mockArticle = { id: 1, slug: "test-article", publishedAt: null };
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+
+      await PUT(
+        createRequest("test-article", "PUT", { publishedAt: null }),
+        createParams("test-article")
+      );
+
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            publishedAt: null,
           }),
         })
       );

@@ -17,6 +17,8 @@ const S3 = new S3Client({
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
+    const { searchParams } = new URL(request.url);
+    const admin = searchParams.get("admin") === "true";
 
     const article = await prisma.article.findUnique({
       where: { slug },
@@ -27,6 +29,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!article) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    }
+
+    // 非管理員只能查看已發佈且發佈時間已到的內容
+    if (!admin) {
+      const isPublished = article.status === "published";
+      const isScheduleReady =
+        !article.publishedAt || article.publishedAt <= new Date();
+      if (!isPublished || !isScheduleReady) {
+        return NextResponse.json(
+          { error: "Article not found" },
+          { status: 404 }
+        );
+      }
     }
 
     return NextResponse.json(article);
@@ -58,7 +73,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         content: body.content,
         category: body.category,
         date: body.date ? new Date(body.date) : undefined,
-        published: body.published,
+        status: body.status,
+        publishedAt:
+          body.publishedAt !== undefined
+            ? body.publishedAt
+              ? new Date(body.publishedAt)
+              : null
+            : undefined,
         ...(readTime && { readTime }),
         ...(body.cover && { cover: body.cover }),
         ...(body.tagIds !== undefined && {

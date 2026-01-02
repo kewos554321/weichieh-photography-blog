@@ -8,18 +8,34 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const tag = searchParams.get("tag");
     const search = searchParams.get("search");
-    const published = searchParams.get("published");
+    const status = searchParams.get("status");
+    const admin = searchParams.get("admin") === "true";
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
 
     const where: Record<string, unknown> = {};
     if (category && category !== "全部") where.category = category;
     if (tag) where.tags = { some: { name: tag } };
-    if (published !== null) where.published = published === "true";
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },
         { excerpt: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // 狀態篩選
+    if (status) {
+      where.status = status;
+    } else if (!admin) {
+      // 公開頁面只顯示已發佈且發佈時間已到的內容
+      where.status = "published";
+      where.AND = [
+        {
+          OR: [
+            { publishedAt: null },
+            { publishedAt: { lte: new Date() } },
+          ],
+        },
       ];
     }
 
@@ -81,7 +97,8 @@ export async function POST(request: NextRequest) {
         category,
         readTime,
         date: body.date ? new Date(body.date) : new Date(),
-        published: body.published ?? false,
+        status: body.status || "draft",
+        publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
         ...(body.tagIds && {
           tags: {
             connect: body.tagIds.map((id: number) => ({ id })),

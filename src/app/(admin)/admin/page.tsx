@@ -20,6 +20,7 @@ import {
   Filter,
   Eye,
   EyeOff,
+  Clock,
 } from "lucide-react";
 
 type Tab = "photos" | "articles";
@@ -46,6 +47,8 @@ interface Photo {
   lens?: string;
   story: string;
   behindTheScene?: string;
+  status: "draft" | "scheduled" | "published";
+  publishedAt?: string;
   tags: PhotoTag[];
 }
 
@@ -58,7 +61,8 @@ interface Article {
   excerpt: string;
   content: string;
   date: string;
-  published: boolean;
+  status: "draft" | "scheduled" | "published";
+  publishedAt?: string;
   readTime: number;
   tags: ArticleTag[];
 }
@@ -144,6 +148,7 @@ function PhotosTab() {
   const fetchPhotos = useCallback(async () => {
     try {
       const params = new URLSearchParams();
+      params.set("admin", "true");
       if (searchQuery) params.set("search", searchQuery);
       if (categoryFilter !== "All") params.set("category", categoryFilter);
       if (tagFilter) params.set("tag", tagFilter);
@@ -288,6 +293,9 @@ function PhotosTab() {
                     Tags
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Date
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider">
@@ -333,6 +341,31 @@ function PhotosTab() {
                           </span>
                         ))}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {photo.status === "published" ? (
+                        <span className="flex items-center gap-1 text-xs text-green-700">
+                          <Eye className="w-3 h-3" />
+                          Published
+                        </span>
+                      ) : photo.status === "scheduled" ? (
+                        <span className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1 text-xs text-amber-600">
+                            <Clock className="w-3 h-3" />
+                            Scheduled
+                          </span>
+                          {photo.publishedAt && (
+                            <span className="text-[10px] text-stone-400">
+                              {new Date(photo.publishedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs text-stone-500">
+                          <EyeOff className="w-3 h-3" />
+                          Draft
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-500">
                       {new Date(photo.date).toLocaleDateString()}
@@ -405,6 +438,10 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
     behindTheScene: photo?.behindTheScene || "",
     image: null as File | null,
     tagIds: photo?.tags?.map((t) => t.id) || ([] as number[]),
+    status: photo?.status || ("draft" as "draft" | "scheduled" | "published"),
+    publishedAt: photo?.publishedAt
+      ? photo.publishedAt.slice(0, 16)
+      : "",
   });
 
   const isEditMode = !!photo;
@@ -484,6 +521,11 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
         story: formData.story,
         behindTheScene: formData.behindTheScene || null,
         tagIds: formData.tagIds,
+        status: formData.status,
+        publishedAt:
+          formData.status === "scheduled" && formData.publishedAt
+            ? formData.publishedAt
+            : null,
       };
 
       const url = isEditMode ? `/api/photos/${photo.slug}` : "/api/photos";
@@ -741,6 +783,70 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
             />
           </div>
 
+          {/* Publish Settings */}
+          <div className="p-4 bg-stone-50 rounded-lg space-y-3">
+            <label className="block text-sm font-medium text-stone-700">
+              Publish Settings
+            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="draft"
+                  checked={formData.status === "draft"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "draft", publishedAt: "" })
+                  }
+                  className="text-stone-900"
+                />
+                <EyeOff className="w-4 h-4 text-stone-500" />
+                <span className="text-sm text-stone-700">Draft</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="scheduled"
+                  checked={formData.status === "scheduled"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "scheduled" })
+                  }
+                  className="text-stone-900"
+                />
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-stone-700">Scheduled</span>
+              </label>
+              {formData.status === "scheduled" && (
+                <div className="ml-6">
+                  <input
+                    type="datetime-local"
+                    value={formData.publishedAt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, publishedAt: e.target.value })
+                    }
+                    className="px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                    required
+                  />
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="status"
+                  value="published"
+                  checked={formData.status === "published"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "published", publishedAt: "" })
+                  }
+                  className="text-stone-900"
+                />
+                <Eye className="w-4 h-4 text-green-700" />
+                <span className="text-sm text-stone-700">Published</span>
+              </label>
+            </div>
+          </div>
+
           {/* Progress */}
           {isUploading && (
             <div className="w-full bg-stone-200 rounded-full h-2">
@@ -792,6 +898,7 @@ function ArticlesTab() {
   const fetchArticles = useCallback(async () => {
     try {
       const params = new URLSearchParams();
+      params.set("admin", "true");
       if (searchQuery) params.set("search", searchQuery);
       if (categoryFilter !== "全部") params.set("category", categoryFilter);
       if (tagFilter) params.set("tag", tagFilter);
@@ -985,10 +1092,22 @@ function ArticlesTab() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {article.published ? (
+                      {article.status === "published" ? (
                         <span className="flex items-center gap-1 text-xs text-green-700">
                           <Eye className="w-3 h-3" />
                           Published
+                        </span>
+                      ) : article.status === "scheduled" ? (
+                        <span className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1 text-xs text-amber-600">
+                            <Clock className="w-3 h-3" />
+                            Scheduled
+                          </span>
+                          {article.publishedAt && (
+                            <span className="text-[10px] text-stone-400">
+                              {new Date(article.publishedAt).toLocaleString()}
+                            </span>
+                          )}
                         </span>
                       ) : (
                         <span className="flex items-center gap-1 text-xs text-stone-500">
@@ -1063,7 +1182,10 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
     excerpt: article?.excerpt || "",
     content: article?.content || "",
     cover: null as File | null,
-    published: article?.published || false,
+    status: article?.status || ("draft" as "draft" | "scheduled" | "published"),
+    publishedAt: article?.publishedAt
+      ? article.publishedAt.slice(0, 16)
+      : "",
     tagIds: article?.tags?.map((t) => t.id) || ([] as number[]),
   });
 
@@ -1139,7 +1261,11 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
         content: formData.content,
         cover: coverUrl,
         category: formData.category,
-        published: formData.published,
+        status: formData.status,
+        publishedAt:
+          formData.status === "scheduled" && formData.publishedAt
+            ? formData.publishedAt
+            : null,
         tagIds: formData.tagIds,
       };
 
@@ -1220,44 +1346,22 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                <Filter className="w-3 h-3 inline mr-1" />
-                Category *
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
-              >
-                <option value="技巧分享">技巧分享</option>
-                <option value="旅行日記">旅行日記</option>
-                <option value="攝影思考">攝影思考</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.published}
-                  onChange={(e) =>
-                    setFormData({ ...formData, published: e.target.checked })
-                  }
-                  className="rounded border-stone-300"
-                />
-                <span className="text-sm text-stone-700 flex items-center gap-1">
-                  {formData.published ? (
-                    <Eye className="w-4 h-4" />
-                  ) : (
-                    <EyeOff className="w-4 h-4" />
-                  )}
-                  {formData.published ? "Published" : "Draft"}
-                </span>
-              </label>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">
+              <Filter className="w-3 h-3 inline mr-1" />
+              Category *
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) =>
+                setFormData({ ...formData, category: e.target.value })
+              }
+              className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
+            >
+              <option value="技巧分享">技巧分享</option>
+              <option value="旅行日記">旅行日記</option>
+              <option value="攝影思考">攝影思考</option>
+            </select>
           </div>
 
           {/* Tags */}
@@ -1357,6 +1461,70 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
               placeholder="## Heading&#10;&#10;Your content here..."
               required
             />
+          </div>
+
+          {/* Publish Settings */}
+          <div className="p-4 bg-stone-50 rounded-lg space-y-3">
+            <label className="block text-sm font-medium text-stone-700">
+              Publish Settings
+            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="article-status"
+                  value="draft"
+                  checked={formData.status === "draft"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "draft", publishedAt: "" })
+                  }
+                  className="text-stone-900"
+                />
+                <EyeOff className="w-4 h-4 text-stone-500" />
+                <span className="text-sm text-stone-700">Draft</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="article-status"
+                  value="scheduled"
+                  checked={formData.status === "scheduled"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "scheduled" })
+                  }
+                  className="text-stone-900"
+                />
+                <Clock className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-stone-700">Scheduled</span>
+              </label>
+              {formData.status === "scheduled" && (
+                <div className="ml-6">
+                  <input
+                    type="datetime-local"
+                    value={formData.publishedAt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, publishedAt: e.target.value })
+                    }
+                    className="px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                    required
+                  />
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="article-status"
+                  value="published"
+                  checked={formData.status === "published"}
+                  onChange={() =>
+                    setFormData({ ...formData, status: "published", publishedAt: "" })
+                  }
+                  className="text-stone-900"
+                />
+                <Eye className="w-4 h-4 text-green-700" />
+                <span className="text-sm text-stone-700">Published</span>
+              </label>
+            </div>
           </div>
 
           {/* Progress */}

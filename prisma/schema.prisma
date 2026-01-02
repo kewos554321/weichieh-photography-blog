@@ -19,12 +19,16 @@ model Photo {
   lens           String?
   story          String     @db.Text
   behindTheScene String?    @db.Text
+  status         String     @default("published")
+  publishedAt    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   tags           PhotoTag[]
 
   @@index([category])
   @@index([date])
+  @@index([status])
+  @@index([publishedAt])
 }
 
 model PhotoTag {
@@ -35,23 +39,25 @@ model PhotoTag {
 }
 
 model Article {
-  id        Int          @id @default(autoincrement())
-  slug      String       @unique
-  title     String
-  excerpt   String       @db.Text
-  content   String       @db.Text
-  cover     String
-  category  String
-  readTime  Int
-  date      DateTime
-  published Boolean      @default(false)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  tags      ArticleTag[]
+  id          Int          @id @default(autoincrement())
+  slug        String       @unique
+  title       String
+  excerpt     String       @db.Text
+  content     String       @db.Text
+  cover       String
+  category    String
+  readTime    Int
+  date        DateTime
+  status      String       @default("draft")
+  publishedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tags        ArticleTag[]
 
   @@index([category])
   @@index([date])
-  @@index([published])
+  @@index([status])
+  @@index([publishedAt])
 }
 
 model ArticleTag {

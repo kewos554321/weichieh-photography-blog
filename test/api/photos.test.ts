@@ -14,14 +14,14 @@ describe("Photos API", () => {
   });
 
   describe("GET /api/photos", () => {
-    it("should return photos list", async () => {
+    it("should return photos list with admin=true", async () => {
       const mockPhotos = [
         { id: 1, slug: "photo-1", title: "Photo 1", tags: [] },
       ];
       mockPrisma.photo.findMany.mockResolvedValue(mockPhotos);
       mockPrisma.photo.count.mockResolvedValue(1);
 
-      const request = new NextRequest("http://localhost/api/photos");
+      const request = new NextRequest("http://localhost/api/photos?admin=true");
       const response = await GET(request);
       const data = await response.json();
 
@@ -29,12 +29,36 @@ describe("Photos API", () => {
       expect(data.total).toBe(1);
     });
 
+    it("should filter by status for public requests", async () => {
+      mockPrisma.photo.findMany.mockResolvedValue([]);
+      mockPrisma.photo.count.mockResolvedValue(0);
+
+      const request = new NextRequest("http://localhost/api/photos");
+      await GET(request);
+
+      expect(mockPrisma.photo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: "published",
+            AND: expect.arrayContaining([
+              expect.objectContaining({
+                OR: expect.arrayContaining([
+                  { publishedAt: null },
+                  { publishedAt: expect.objectContaining({ lte: expect.any(Date) }) },
+                ]),
+              }),
+            ]),
+          }),
+        })
+      );
+    });
+
     it("should filter by category", async () => {
       mockPrisma.photo.findMany.mockResolvedValue([]);
       mockPrisma.photo.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/photos?category=Portrait"
+        "http://localhost/api/photos?category=Portrait&admin=true"
       );
       await GET(request);
 
@@ -45,12 +69,12 @@ describe("Photos API", () => {
       );
     });
 
-    it("should not filter when category is All", async () => {
+    it("should not filter category when All (admin mode)", async () => {
       mockPrisma.photo.findMany.mockResolvedValue([]);
       mockPrisma.photo.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/photos?category=All"
+        "http://localhost/api/photos?category=All&admin=true"
       );
       await GET(request);
 
@@ -61,12 +85,28 @@ describe("Photos API", () => {
       );
     });
 
+    it("should filter by status query param", async () => {
+      mockPrisma.photo.findMany.mockResolvedValue([]);
+      mockPrisma.photo.count.mockResolvedValue(0);
+
+      const request = new NextRequest(
+        "http://localhost/api/photos?status=draft&admin=true"
+      );
+      await GET(request);
+
+      expect(mockPrisma.photo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: "draft" }),
+        })
+      );
+    });
+
     it("should filter by tag", async () => {
       mockPrisma.photo.findMany.mockResolvedValue([]);
       mockPrisma.photo.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/photos?tag=Nature"
+        "http://localhost/api/photos?tag=Nature&admin=true"
       );
       await GET(request);
 
@@ -84,7 +124,7 @@ describe("Photos API", () => {
       mockPrisma.photo.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/photos?search=sunset"
+        "http://localhost/api/photos?search=sunset&admin=true"
       );
       await GET(request);
 
@@ -105,7 +145,7 @@ describe("Photos API", () => {
       mockPrisma.photo.count.mockResolvedValue(0);
 
       const request = new NextRequest(
-        "http://localhost/api/photos?limit=10&offset=20"
+        "http://localhost/api/photos?limit=10&offset=20&admin=true"
       );
       await GET(request);
 
@@ -120,7 +160,7 @@ describe("Photos API", () => {
     it("should handle errors", async () => {
       mockPrisma.photo.findMany.mockRejectedValue(new Error("DB error"));
 
-      const request = new NextRequest("http://localhost/api/photos");
+      const request = new NextRequest("http://localhost/api/photos?admin=true");
       const response = await GET(request);
       const data = await response.json();
 
@@ -202,6 +242,29 @@ describe("Photos API", () => {
             camera: "Sony A7IV",
             lens: "85mm f/1.4",
             behindTheScene: "Behind the scene story",
+          }),
+        })
+      );
+    });
+
+    it("should create photo with scheduled publishedAt", async () => {
+      const publishedAt = "2025-06-15T10:00:00";
+      const mockPhoto = { id: 1, ...validPhotoData, status: "scheduled", publishedAt: new Date(publishedAt), tags: [] };
+      mockPrisma.photo.findUnique.mockResolvedValue(null);
+      mockPrisma.photo.create.mockResolvedValue(mockPhoto);
+
+      const request = new NextRequest("http://localhost/api/photos", {
+        method: "POST",
+        body: JSON.stringify({ ...validPhotoData, status: "scheduled", publishedAt }),
+      });
+
+      await POST(request);
+
+      expect(mockPrisma.photo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "scheduled",
+            publishedAt: new Date(publishedAt),
           }),
         })
       );

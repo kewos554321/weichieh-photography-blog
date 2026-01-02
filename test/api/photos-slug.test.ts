@@ -45,11 +45,13 @@ describe("Photos [slug] API", () => {
   });
 
   describe("GET /api/photos/[slug]", () => {
-    it("should return a photo", async () => {
+    it("should return a published photo", async () => {
       const mockPhoto = {
         id: 1,
         slug: "test-photo",
         title: "Test Photo",
+        status: "published",
+        publishedAt: null,
         tags: [],
       };
       mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);
@@ -65,6 +67,67 @@ describe("Photos [slug] API", () => {
         where: { slug: "test-photo" },
         include: { tags: true },
       });
+    });
+
+    it("should return 404 for unpublished photo without admin", async () => {
+      const mockPhoto = {
+        id: 1,
+        slug: "test-photo",
+        status: "draft",
+        publishedAt: null,
+        tags: [],
+      };
+      mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);
+
+      const response = await GET(
+        createRequest("test-photo"),
+        createParams("test-photo")
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe("Photo not found");
+    });
+
+    it("should return unpublished photo with admin=true", async () => {
+      const mockPhoto = {
+        id: 1,
+        slug: "test-photo",
+        status: "draft",
+        publishedAt: null,
+        tags: [],
+      };
+      mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);
+
+      const response = await GET(
+        new NextRequest("http://localhost/api/photos/test-photo?admin=true"),
+        createParams("test-photo")
+      );
+      const data = await response.json();
+
+      expect(data).toEqual(mockPhoto);
+    });
+
+    it("should return 404 for scheduled photo not yet due", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+      const mockPhoto = {
+        id: 1,
+        slug: "test-photo",
+        status: "published",
+        publishedAt: futureDate,
+        tags: [],
+      };
+      mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);
+
+      const response = await GET(
+        createRequest("test-photo"),
+        createParams("test-photo")
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe("Photo not found");
     });
 
     it("should return 404 if photo not found", async () => {
@@ -173,6 +236,61 @@ describe("Photos [slug] API", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             date: undefined,
+          }),
+        })
+      );
+    });
+
+    it("should update status", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", status: "published" };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { status: "published" }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "published",
+          }),
+        })
+      );
+    });
+
+    it("should update publishedAt", async () => {
+      const publishedAt = "2025-06-15T10:00:00";
+      const mockPhoto = { id: 1, slug: "test-photo", publishedAt: new Date(publishedAt) };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { publishedAt }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            publishedAt: new Date(publishedAt),
+          }),
+        })
+      );
+    });
+
+    it("should clear publishedAt when set to null", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", publishedAt: null };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { publishedAt: null }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            publishedAt: null,
           }),
         })
       );
