@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Photo {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  title          String
+  src            String
+  category       String
+  location       String
+  date           DateTime
+  camera         String?
+  lens           String?
+  story          String   @db.Text
+  behindTheScene String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([category])
+  @@index([date])
+}
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  title     String
+  excerpt   String   @db.Text
+  content   String   @db.Text
+  cover     String
+  category  String
+  readTime  Int
+  date      DateTime
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([date])
+  @@index([published])
+}
