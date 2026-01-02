@@ -38,12 +38,6 @@ export default function Header() {
           >
             About
           </Link>
-          <Link
-            href="/contact"
-            className={`hidden md:block ${isActive("/contact") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}`}
-          >
-            Contact
-          </Link>
         </div>
       </nav>
     </header>
