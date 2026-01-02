@@ -24,6 +24,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { slug },
       include: {
         tags: true,
+        article: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            excerpt: true,
+            cover: true,
+            status: true,
+          },
+        },
       },
     });
 
@@ -81,9 +91,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             set: body.tagIds.map((id: number) => ({ id })),
           },
         }),
+        ...(body.articleId !== undefined && {
+          articleId: body.articleId,
+        }),
       },
       include: {
         tags: true,
+        article: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+          },
+        },
       },
     });
 

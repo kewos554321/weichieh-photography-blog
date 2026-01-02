@@ -25,10 +25,15 @@ model Photo {
   updatedAt      DateTime   @updatedAt
   tags           PhotoTag[]
 
+  // 關聯文章（點擊「閱讀完整故事」）
+  article   Article? @relation(fields: [articleId], references: [id])
+  articleId Int?
+
   @@index([category])
   @@index([date])
   @@index([status])
   @@index([publishedAt])
+  @@index([articleId])
 }
 
 model PhotoTag {
@@ -53,6 +58,9 @@ model Article {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   tags        ArticleTag[]
+
+  // 關聯照片（文章底部的照片集）
+  photos Photo[]
 
   @@index([category])
   @@index([date])

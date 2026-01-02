@@ -21,6 +21,11 @@ import {
   Eye,
   EyeOff,
   Clock,
+  Upload,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 
 type Tab = "photos" | "articles";
@@ -142,6 +147,7 @@ function PhotosTab() {
   const [tagFilter, setTagFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
   const categories = ["All", "Portrait", "Landscape", "Street", "Nature"];
 
@@ -259,14 +265,23 @@ function PhotosTab() {
           )}
         </div>
 
-        {/* Add Button */}
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Photo
-        </button>
+        {/* Add Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsBatchModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            Batch Upload
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Photo
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -403,6 +418,340 @@ function PhotosTab() {
           onSuccess={handleModalSuccess}
         />
       )}
+
+      {/* Batch Upload Modal */}
+      {isBatchModalOpen && (
+        <BatchUploadModal
+          onClose={() => setIsBatchModalOpen(false)}
+          onSuccess={() => {
+            setIsBatchModalOpen(false);
+            fetchPhotos();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// Batch Upload Modal
+// ============================================
+interface BatchUploadModalProps {
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+interface UploadFile {
+  file: File;
+  preview: string;
+  status: "pending" | "uploading" | "done" | "error";
+  publicUrl?: string;
+  error?: string;
+}
+
+function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) {
+  const { uploadBatch, isUploading, progress } = useUpload();
+  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
+
+  const handleFiles = (newFiles: FileList | File[]) => {
+    const fileArray = Array.from(newFiles);
+    const validFiles = fileArray.filter((f) =>
+      ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type)
+    );
+
+    const uploadFiles: UploadFile[] = validFiles.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      status: "pending",
+    }));
+
+    setFiles((prev) => [...prev, ...uploadFiles]);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => {
+      const newFiles = [...prev];
+      URL.revokeObjectURL(newFiles[index].preview);
+      newFiles.splice(index, 1);
+      return newFiles;
+    });
+  };
+
+  const handleUpload = async () => {
+    if (files.length === 0) return;
+
+    // Mark all as uploading
+    setFiles((prev) => prev.map((f) => ({ ...f, status: "uploading" })));
+
+    try {
+      const results = await uploadBatch(
+        files.map((f) => f.file),
+        "photos",
+        (completed, total, filename) => {
+          setCurrentFileIndex(completed);
+          setFiles((prev) =>
+            prev.map((f, i) =>
+              i < completed ? { ...f, status: "done" } : f
+            )
+          );
+        }
+      );
+
+      // 建立資料庫記錄
+      const createPromises = results.map(async (result, index) => {
+        const file = files[index].file;
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+        const title = nameWithoutExt.replace(/[-_]/g, " ");
+        const slug = nameWithoutExt
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-") + "-" + Date.now();
+
+        await fetch("/api/photos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug,
+            title,
+            src: result.publicUrl,
+            category: "Portrait",
+            location: "未設定",
+            date: new Date().toISOString().split("T")[0],
+            story: "待編輯...",
+            status: "draft",
+          }),
+        });
+      });
+
+      await Promise.all(createPromises);
+
+      // Update with results
+      setFiles((prev) =>
+        prev.map((f, i) => ({
+          ...f,
+          status: "done",
+          publicUrl: results[i]?.publicUrl,
+        }))
+      );
+      setUploadComplete(true);
+    } catch (err) {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.status === "uploading"
+            ? { ...f, status: "error", error: "Upload failed" }
+            : f
+        )
+      );
+    }
+  };
+
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      files.forEach((f) => URL.revokeObjectURL(f.preview));
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-stone-200">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Upload className="w-5 h-5" />
+            Batch Upload Photos
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-stone-100 rounded-full"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Drop Zone */}
+          {!uploadComplete && (
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragging
+                  ? "border-stone-900 bg-stone-50"
+                  : "border-stone-300 hover:border-stone-400"
+              }`}
+            >
+              <Upload className="w-10 h-10 mx-auto text-stone-400 mb-3" />
+              <p className="text-stone-600 mb-2">
+                Drag and drop images here, or
+              </p>
+              <label className="inline-block px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 cursor-pointer transition-colors">
+                Browse Files
+                <input
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                  className="hidden"
+                />
+              </label>
+              <p className="text-xs text-stone-400 mt-3">
+                Supports: JPEG, PNG, WebP, GIF (Max 20 files, 10MB each)
+              </p>
+            </div>
+          )}
+
+          {/* Preview Grid */}
+          {files.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-stone-600">
+                  {files.length} file{files.length > 1 ? "s" : ""} selected
+                </span>
+                {!uploadComplete && !isUploading && (
+                  <button
+                    onClick={() => setFiles([])}
+                    className="text-sm text-red-600 hover:text-red-700"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-4 gap-3 max-h-64 overflow-y-auto p-1">
+                {files.map((file, index) => (
+                  <div
+                    key={index}
+                    className="relative aspect-square rounded-lg overflow-hidden group"
+                  >
+                    <Image
+                      src={file.preview}
+                      alt={file.file.name}
+                      fill
+                      className="object-cover"
+                    />
+                    {/* Status overlay */}
+                    <div
+                      className={`absolute inset-0 flex items-center justify-center ${
+                        file.status === "pending"
+                          ? "bg-black/0 group-hover:bg-black/40"
+                          : file.status === "uploading"
+                          ? "bg-black/40"
+                          : file.status === "done"
+                          ? "bg-green-500/30"
+                          : "bg-red-500/30"
+                      }`}
+                    >
+                      {file.status === "pending" && !isUploading && (
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                      {file.status === "uploading" && (
+                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      )}
+                      {file.status === "done" && (
+                        <CheckCircle className="w-8 h-8 text-white" />
+                      )}
+                      {file.status === "error" && (
+                        <AlertCircle className="w-8 h-8 text-white" />
+                      )}
+                    </div>
+                    {/* Filename */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
+                      <p className="text-xs text-white truncate">
+                        {file.file.name}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Progress Bar */}
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-stone-600">
+                <span>Uploading...</span>
+                <span>
+                  {currentFileIndex} / {files.length}
+                </span>
+              </div>
+              <div className="w-full bg-stone-200 rounded-full h-2">
+                <div
+                  className="bg-stone-900 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {uploadComplete && (
+            <div className="p-4 bg-green-50 text-green-700 rounded-lg flex items-center gap-3">
+              <CheckCircle className="w-5 h-5" />
+              <div>
+                <p className="font-medium">Upload Complete!</p>
+                <p className="text-sm">
+                  {files.length} photos uploaded successfully. You can now edit
+                  each photo to add details.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 p-4 border-t border-stone-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
+          >
+            {uploadComplete ? "Close" : "Cancel"}
+          </button>
+          {!uploadComplete && (
+            <button
+              onClick={handleUpload}
+              disabled={files.length === 0 || isUploading}
+              className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors disabled:bg-stone-400"
+            >
+              {isUploading ? "Uploading..." : `Upload ${files.length} Photos`}
+            </button>
+          )}
+          {uploadComplete && (
+            <button
+              onClick={onSuccess}
+              className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors"
+            >
+              Done
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -417,6 +766,12 @@ interface PhotoModalProps {
   onSuccess: () => void;
 }
 
+interface ArticleOption {
+  id: number;
+  slug: string;
+  title: string;
+}
+
 function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -425,6 +780,9 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
     photo?.src || null
   );
   const [newTagName, setNewTagName] = useState("");
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [articles, setArticles] = useState<ArticleOption[]>([]);
 
   const [formData, setFormData] = useState({
     title: photo?.title || "",
@@ -442,7 +800,16 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
     publishedAt: photo?.publishedAt
       ? photo.publishedAt.slice(0, 16)
       : "",
+    articleId: (photo as Photo & { articleId?: number })?.articleId || null as number | null,
   });
+
+  // 載入可選的文章列表
+  useEffect(() => {
+    fetch("/api/articles?admin=true&limit=100")
+      .then((res) => res.json())
+      .then((data) => setArticles(data.articles || []))
+      .catch(() => setArticles([]));
+  }, []);
 
   const isEditMode = !!photo;
 
@@ -493,6 +860,97 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
     }
   };
 
+  const handleGenerateStory = async () => {
+    // 需要有圖片才能生成
+    const imageUrl = imagePreview?.startsWith("data:") ? null : imagePreview;
+    if (!imageUrl && !formData.image) {
+      setError("請先上傳圖片才能使用 AI 生成故事");
+      return;
+    }
+
+    setIsGeneratingStory(true);
+    setError(null);
+
+    try {
+      // 如果是新上傳的圖片，需要先上傳
+      let uploadedUrl = imageUrl;
+      if (formData.image && !imageUrl) {
+        const { publicUrl } = await upload(formData.image, "photos");
+        uploadedUrl = publicUrl;
+        setImagePreview(publicUrl);
+      }
+
+      const res = await fetch("/api/ai/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: uploadedUrl,
+          prompt: aiPrompt || undefined,
+          language: "zh",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "生成失敗");
+      }
+
+      const data = await res.json();
+
+      // 處理 AI 建議的 tags（自動新增不存在的標籤）
+      const aiTagIds: number[] = [];
+      if (data.tags && Array.isArray(data.tags)) {
+        for (const tagName of data.tags) {
+          // 檢查標籤是否已存在
+          const existingTag = tags.find(
+            (t) => t.name.toLowerCase() === tagName.toLowerCase()
+          );
+          if (existingTag) {
+            aiTagIds.push(existingTag.id);
+          } else {
+            // 建立新標籤
+            try {
+              const tagRes = await fetch("/api/photos/tags", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: tagName }),
+              });
+              if (tagRes.ok) {
+                const newTag = await tagRes.json();
+                tags.push(newTag);
+                aiTagIds.push(newTag.id);
+              }
+            } catch {
+              console.error("Failed to create tag:", tagName);
+            }
+          }
+        }
+      }
+
+      // 更新表單（包含 title、story、category、tags）
+      const newSlug = data.title
+        ? data.title
+            .toLowerCase()
+            .replace(/[^a-z0-9\u4e00-\u9fff\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-") + "-" + Date.now()
+        : formData.slug;
+
+      setFormData({
+        ...formData,
+        title: data.title || formData.title,
+        slug: isEditMode ? formData.slug : newSlug,
+        story: data.story || formData.story,
+        category: data.category || formData.category,
+        tagIds: aiTagIds.length > 0 ? aiTagIds : formData.tagIds,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI 生成失敗");
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -526,6 +984,7 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
           formData.status === "scheduled" && formData.publishedAt
             ? formData.publishedAt
             : null,
+        articleId: formData.articleId,
       };
 
       const url = isEditMode ? `/api/photos/${photo.slug}` : "/api/photos";
@@ -754,17 +1213,50 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
           </div>
 
           {/* Story */}
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Story *
-            </label>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-stone-700">
+                Story *
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateStory}
+                disabled={isGeneratingStory || (!imagePreview && !formData.image)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGeneratingStory ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    AI 分析中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    AI 自動填寫
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* AI Prompt Input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="可選：輸入提示詞引導 AI（AI 將自動填寫標題、分類、標籤、故事）"
+                className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50/50"
+              />
+            </div>
+
             <textarea
               value={formData.story}
               onChange={(e) =>
                 setFormData({ ...formData, story: e.target.value })
               }
-              rows={3}
+              rows={4}
               className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="描述這張照片背後的故事..."
               required
             />
           </div>
@@ -781,6 +1273,34 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
               rows={2}
               className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
             />
+          </div>
+
+          {/* Link to Article */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">
+              <FileText className="w-3 h-3 inline mr-1" />
+              關聯文章（閱讀完整故事）
+            </label>
+            <select
+              value={formData.articleId || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  articleId: e.target.value ? parseInt(e.target.value) : null,
+                })
+              }
+              className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
+            >
+              <option value="">無（不連結文章）</option>
+              {articles.map((article) => (
+                <option key={article.id} value={article.id}>
+                  {article.title}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-stone-400 mt-1">
+              選擇後，照片頁面會顯示「閱讀完整故事」按鈕
+            </p>
           </div>
 
           {/* Publish Settings */}

@@ -24,6 +24,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { slug },
       include: {
         tags: true,
+        photos: {
+          where: admin ? {} : { status: "published" },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            src: true,
+            location: true,
+          },
+          orderBy: { date: "desc" },
+        },
       },
     });
 
