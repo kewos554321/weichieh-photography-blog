@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { publishScheduledContent } from "@/lib/publish";
 
 // GET /api/cron/publish - 自動發佈到期的排程內容
+// 可由 Vercel Cron 或手動觸發
 export async function GET(request: NextRequest) {
   try {
     // 驗證 cron secret (可選，用於 Vercel Cron)
@@ -12,42 +13,40 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const now = new Date();
-
-    // 更新到期的排程文章
-    const articlesResult = await prisma.article.updateMany({
-      where: {
-        status: "scheduled",
-        publishedAt: {
-          lte: now,
-        },
-      },
-      data: {
-        status: "published",
-      },
-    });
-
-    // 更新到期的排程照片
-    const photosResult = await prisma.photo.updateMany({
-      where: {
-        status: "scheduled",
-        publishedAt: {
-          lte: now,
-        },
-      },
-      data: {
-        status: "published",
-      },
-    });
+    const result = await publishScheduledContent();
 
     return NextResponse.json({
       success: true,
-      publishedArticles: articlesResult.count,
-      publishedPhotos: photosResult.count,
-      timestamp: now.toISOString(),
+      publishedArticles: result.publishedArticles,
+      publishedPhotos: result.publishedPhotos,
+      timestamp: result.timestamp.toISOString(),
     });
   } catch (error) {
     console.error("Cron publish error:", error);
+    return NextResponse.json(
+      { error: "Failed to publish scheduled content" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/cron/publish - 手動觸發發布（需要 admin 權限）
+export async function POST(request: NextRequest) {
+  try {
+    // 這裡可以加入 admin 認證檢查
+    const result = await publishScheduledContent();
+
+    return NextResponse.json({
+      success: true,
+      publishedArticles: result.publishedArticles,
+      publishedPhotos: result.publishedPhotos,
+      timestamp: result.timestamp.toISOString(),
+      message: result.publishedArticles + result.publishedPhotos > 0
+        ? `已發布 ${result.publishedArticles} 篇文章和 ${result.publishedPhotos} 張照片`
+        : "目前沒有待發布的排程內容",
+    });
+  } catch (error) {
+    console.error("Manual publish error:", error);
     return NextResponse.json(
       { error: "Failed to publish scheduled content" },
       { status: 500 }
