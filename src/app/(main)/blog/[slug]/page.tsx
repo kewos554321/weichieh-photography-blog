@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState, useRef } from "react";
 import { notFound } from "next/navigation";
 
 const articles = [
@@ -10,6 +13,7 @@ const articles = [
     date: "2024-12-15",
     cover: "https://picsum.photos/seed/blog1/1200/800",
     category: "技巧分享",
+    readTime: 8,
     content: `
 高山攝影一直是我最熱愛的題材之一。從第一次登上合歡山拍攝銀河，到後來挑戰玉山主峰的日出，每一次的經驗都讓我學到新的東西。
 
@@ -43,6 +47,7 @@ const articles = [
     date: "2024-11-28",
     cover: "https://picsum.photos/seed/blog2/1200/800",
     category: "旅行日記",
+    readTime: 6,
     content: `
 東京是一座讓攝影師永遠拍不完的城市。這次的旅行，我放慢腳步，用一週的時間漫遊在這座巨大的都市叢林中。
 
@@ -72,6 +77,7 @@ const articles = [
     date: "2024-11-10",
     cover: "https://picsum.photos/seed/blog3/1200/800",
     category: "技巧分享",
+    readTime: 5,
     content: `
 很多人以為拍出好的人像需要昂貴的燈具，但其實只要懂得運用自然光，就能創造出專業級的效果。
 
@@ -101,6 +107,7 @@ const articles = [
     date: "2024-10-25",
     cover: "https://picsum.photos/seed/blog4/1200/800",
     category: "攝影思考",
+    readTime: 7,
     content: `
 在這個數位相機高度發達的時代，為什麼我仍然堅持使用底片？這是我經常被問到的問題。
 
@@ -130,6 +137,7 @@ const articles = [
     date: "2024-10-08",
     cover: "https://picsum.photos/seed/blog5/1200/800",
     category: "旅行日記",
+    readTime: 10,
     content: `
 台灣雖小，卻有著豐富多變的地景。除了大家熟知的景點，還有許多不為人知的秘境等待被發現。
 
@@ -159,6 +167,7 @@ const articles = [
     date: "2024-09-20",
     cover: "https://picsum.photos/seed/blog6/1200/800",
     category: "技巧分享",
+    readTime: 6,
     content: `
 經過多年的摸索，我終於建立了一套穩定的修圖流程。這套流程幫助我在保持品質的同時，也能有效率地處理大量照片。
 
@@ -183,14 +192,62 @@ const articles = [
   },
 ];
 
-export function generateStaticParams() {
-  return articles.map((article) => ({
-    slug: article.slug,
-  }));
+// Extract headings from content
+function extractHeadings(content: string): { id: string; title: string }[] {
+  const headings: { id: string; title: string }[] = [];
+  const lines = content.split("\n");
+  lines.forEach((line) => {
+    if (line.startsWith("## ")) {
+      const title = line.replace("## ", "").trim();
+      const id = title.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, "-");
+      headings.push({ id, title });
+    }
+  });
+  return headings;
 }
 
-export default async function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
+export default function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const [slug, setSlug] = useState<string | null>(null);
+  const [readProgress, setReadProgress] = useState(0);
+  const [activeSection, setActiveSection] = useState("");
+  const articleRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    params.then((p) => setSlug(p.slug));
+  }, [params]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!articleRef.current) return;
+
+      const article = articleRef.current;
+      const articleTop = article.offsetTop;
+      const articleHeight = article.offsetHeight;
+      const windowHeight = window.innerHeight;
+      const scrollY = window.scrollY;
+
+      // Calculate read progress
+      const start = articleTop - windowHeight;
+      const end = articleTop + articleHeight - windowHeight;
+      const progress = Math.min(100, Math.max(0, ((scrollY - start) / (end - start)) * 100));
+      setReadProgress(progress);
+
+      // Find active section
+      const headings = article.querySelectorAll("h2[id]");
+      headings.forEach((heading) => {
+        const rect = heading.getBoundingClientRect();
+        if (rect.top < 200) {
+          setActiveSection(heading.id);
+        }
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  if (!slug) return null;
+
   const article = articles.find((a) => a.slug === slug);
 
   if (!article) {
@@ -200,81 +257,254 @@ export default async function BlogArticlePage({ params }: { params: Promise<{ sl
   const currentIndex = articles.findIndex((a) => a.slug === article.slug);
   const prevArticle = currentIndex > 0 ? articles[currentIndex - 1] : null;
   const nextArticle = currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
+  const headings = extractHeadings(article.content);
+
+  // Get related articles (same category, excluding current)
+  const relatedArticles = articles
+    .filter((a) => a.category === article.category && a.slug !== article.slug)
+    .slice(0, 2);
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 100;
+      const top = element.offsetTop - offset;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="pt-16 md:pt-20">
+      {/* Reading Progress Bar */}
+      <div className="fixed top-16 md:top-20 left-0 right-0 h-0.5 bg-stone-200 z-40">
+        <div
+          className="h-full bg-[#6b9e9a] transition-all duration-150"
+          style={{ width: `${readProgress}%` }}
+        />
+      </div>
+
       {/* Cover */}
       <div className="relative h-[40vh] md:h-[50vh]">
         <Image
           src={article.cover}
           alt={article.title}
           fill
-          className="object-cover cinematic-image"
+          className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#f7f5f2] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fafaf8] via-transparent to-transparent" />
       </div>
 
-      {/* Content */}
-      <article className="max-w-3xl mx-auto px-4 md:px-6 py-12 md:py-16">
-        <div className="flex items-center gap-3 text-xs tracking-widest uppercase text-stone-400 mb-4">
-          <span className="text-[#5a8a87]">{article.category}</span>
-          <span>·</span>
-          <span>{article.date}</span>
-        </div>
+      {/* Breadcrumb */}
+      <div className="max-w-4xl mx-auto px-4 md:px-6 pt-8">
+        <nav className="flex items-center gap-2 text-xs tracking-wider text-stone-400">
+          <Link href="/" className="hover:text-[#6b9e9a] transition-colors">
+            Home
+          </Link>
+          <span>/</span>
+          <Link href="/blog" className="hover:text-[#6b9e9a] transition-colors">
+            Blog
+          </Link>
+          <span>/</span>
+          <span className="text-stone-600 truncate max-w-[200px]">{article.title}</span>
+        </nav>
+      </div>
 
-        <h1 className="font-serif text-3xl md:text-5xl mb-8 md:mb-12 text-stone-700">{article.title}</h1>
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+        <div className="grid lg:grid-cols-[1fr_280px] gap-12">
+          {/* Article Content */}
+          <article ref={articleRef} className="max-w-3xl">
+            {/* Meta */}
+            <div className="flex flex-wrap items-center gap-3 text-xs tracking-widest uppercase text-stone-400 mb-4">
+              <span className="px-3 py-1 bg-[#6b9e9a]/10 text-[#6b9e9a] rounded-full">
+                {article.category}
+              </span>
+              <span>{article.date}</span>
+              <span>·</span>
+              <span>{article.readTime} min read</span>
+            </div>
 
-        <div className="prose prose-stone prose-lg max-w-none">
-          {article.content.split("\n\n").map((paragraph, index) => {
-            if (paragraph.startsWith("## ")) {
-              return (
-                <h2 key={index} className="font-serif text-xl md:text-2xl mt-10 md:mt-12 mb-4 md:mb-6 text-stone-600">
-                  {paragraph.replace("## ", "")}
-                </h2>
-              );
-            }
-            return (
-              <p key={index} className="text-stone-500 leading-relaxed mb-4 md:mb-6">
-                {paragraph}
-              </p>
-            );
-          })}
-        </div>
+            {/* Title */}
+            <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl mb-8 text-stone-800 leading-tight">
+              {article.title}
+            </h1>
 
-        {/* Navigation */}
-        <div className="py-8 md:py-12 mt-8 border-t border-stone-200">
-          <div className="flex items-center justify-between">
-            {prevArticle ? (
-              <Link href={`/blog/${prevArticle.slug}`} className="group flex items-center gap-2 md:gap-3 text-stone-400 hover:text-[#5a8a87] transition-colors duration-500">
-                <span className="text-xl md:text-2xl">←</span>
-                <div className="hidden md:block">
-                  <p className="text-xs text-stone-400 tracking-widest uppercase">上一篇</p>
-                  <p className="font-serif text-stone-600 group-hover:text-[#5a8a87] transition-colors duration-500">{prevArticle.title}</p>
-                </div>
+            {/* Author Info */}
+            <div className="flex items-center gap-4 pb-8 mb-8 border-b border-stone-200">
+              <div className="w-12 h-12 rounded-full bg-stone-200 overflow-hidden">
+                <Image
+                  src="https://picsum.photos/seed/author/100/100"
+                  alt="WeiChieh"
+                  width={48}
+                  height={48}
+                  className="object-cover"
+                />
+              </div>
+              <div>
+                <p className="font-serif text-stone-700">WeiChieh</p>
+                <p className="text-xs text-stone-400">Photographer & Writer</p>
+              </div>
+            </div>
+
+            {/* Article Body */}
+            <div className="prose prose-stone prose-lg max-w-none">
+              {article.content.split("\n\n").map((paragraph, index) => {
+                if (paragraph.startsWith("## ")) {
+                  const title = paragraph.replace("## ", "");
+                  const id = title.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, "-");
+                  return (
+                    <h2
+                      key={index}
+                      id={id}
+                      className="font-serif text-xl md:text-2xl mt-12 mb-6 text-stone-700 scroll-mt-24"
+                    >
+                      {title}
+                    </h2>
+                  );
+                }
+                if (paragraph.trim()) {
+                  return (
+                    <p key={index} className="text-stone-600 leading-relaxed mb-6">
+                      {paragraph}
+                    </p>
+                  );
+                }
+                return null;
+              })}
+            </div>
+
+            {/* Share Section */}
+            <div className="mt-12 pt-8 border-t border-stone-200">
+              <p className="text-xs tracking-widest uppercase text-stone-400 mb-4">Share this article</p>
+              <div className="flex gap-3">
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M4.98 3.5c0 1.381-1.11 2.5-2.48 2.5s-2.48-1.119-2.48-2.5c0-1.38 1.11-2.5 2.48-2.5s2.48 1.12 2.48 2.5zm.02 4.5h-5v16h5v-16zm7.982 0h-4.968v16h4.969v-8.399c0-4.67 6.029-5.052 6.029 0v8.399h4.988v-10.131c0-7.88-8.922-7.593-11.018-3.714v-2.155z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="mt-12 pt-8 border-t border-stone-200">
+              <div className="grid md:grid-cols-2 gap-4">
+                {prevArticle ? (
+                  <Link
+                    href={`/blog/${prevArticle.slug}`}
+                    className="group p-6 bg-stone-100 rounded-lg hover:bg-[#6b9e9a]/10 transition-colors"
+                  >
+                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">← Previous</p>
+                    <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-2">
+                      {prevArticle.title}
+                    </p>
+                  </Link>
+                ) : (
+                  <div />
+                )}
+                {nextArticle ? (
+                  <Link
+                    href={`/blog/${nextArticle.slug}`}
+                    className="group p-6 bg-stone-100 rounded-lg hover:bg-[#6b9e9a]/10 transition-colors text-right"
+                  >
+                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">Next →</p>
+                    <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-2">
+                      {nextArticle.title}
+                    </p>
+                  </Link>
+                ) : (
+                  <div />
+                )}
+              </div>
+            </div>
+          </article>
+
+          {/* Sidebar - Table of Contents */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-28">
+              {/* Table of Contents */}
+              <div className="mb-8">
+                <p className="text-xs tracking-widest uppercase text-stone-400 mb-4">On this page</p>
+                <nav className="space-y-2">
+                  {headings.map((heading) => (
+                    <button
+                      key={heading.id}
+                      onClick={() => scrollToSection(heading.id)}
+                      className={`block text-left text-sm py-1 transition-colors ${
+                        activeSection === heading.id
+                          ? "text-[#6b9e9a] font-medium"
+                          : "text-stone-500 hover:text-stone-700"
+                      }`}
+                    >
+                      {heading.title}
+                    </button>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-stone-200 mb-8" />
+
+              {/* Back to Blog */}
+              <Link
+                href="/blog"
+                className="flex items-center gap-2 text-sm text-stone-500 hover:text-[#6b9e9a] transition-colors"
+              >
+                <span>←</span>
+                <span>All Articles</span>
               </Link>
-            ) : (
-              <div />
-            )}
+            </div>
+          </aside>
+        </div>
+      </div>
 
-            <Link href="/blog" className="text-xs tracking-widest uppercase text-stone-400 hover:text-[#5a8a87] transition-colors duration-500">
-              All Articles
-            </Link>
+      {/* Related Articles */}
+      {relatedArticles.length > 0 && (
+        <section className="border-t border-stone-200 py-16 md:py-20">
+          <div className="max-w-7xl mx-auto px-4 md:px-6">
+            <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">More from {article.category}</p>
+            <h2 className="font-serif text-2xl md:text-3xl text-stone-700 mb-10">Related Articles</h2>
 
-            {nextArticle ? (
-              <Link href={`/blog/${nextArticle.slug}`} className="group flex items-center gap-2 md:gap-3 text-stone-400 hover:text-[#5a8a87] transition-colors duration-500 text-right">
-                <div className="hidden md:block">
-                  <p className="text-xs text-stone-400 tracking-widest uppercase">下一篇</p>
-                  <p className="font-serif text-stone-600 group-hover:text-[#5a8a87] transition-colors duration-500">{nextArticle.title}</p>
-                </div>
-                <span className="text-xl md:text-2xl">→</span>
-              </Link>
-            ) : (
-              <div />
-            )}
+            <div className="grid md:grid-cols-2 gap-8">
+              {relatedArticles.map((related) => (
+                <Link key={related.slug} href={`/blog/${related.slug}`} className="group">
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-lg mb-4">
+                    <Image
+                      src={related.cover}
+                      alt={related.title}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-stone-400 mb-2">
+                    <span className="text-[#6b9e9a]">{related.category}</span>
+                    <span>·</span>
+                    <span>{related.readTime} min read</span>
+                  </div>
+                  <h3 className="font-serif text-xl text-stone-700 group-hover:text-[#6b9e9a] transition-colors">
+                    {related.title}
+                  </h3>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </article>
+        </section>
+      )}
     </div>
   );
 }

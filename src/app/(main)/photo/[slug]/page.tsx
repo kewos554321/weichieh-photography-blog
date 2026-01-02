@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter, notFound } from "next/navigation";
 
 const photos = [
   {
@@ -213,46 +216,114 @@ const photos = [
   },
 ];
 
-export function generateStaticParams() {
-  return photos.map((photo) => ({
-    slug: photo.slug,
-  }));
-}
+export default function PhotoPage({ params }: { params: Promise<{ slug: string }> }) {
+  const router = useRouter();
+  const [slug, setSlug] = useState<string | null>(null);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [showImageHint, setShowImageHint] = useState(false);
 
-export default async function PhotoPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const photo = photos.find((p) => p.slug === slug);
+  useEffect(() => {
+    params.then((p) => setSlug(p.slug));
+  }, [params]);
+
+  const photo = slug ? photos.find((p) => p.slug === slug) : null;
+  const currentIndex = photo ? photos.findIndex((p) => p.slug === photo.slug) : -1;
+  const prevPhoto = currentIndex > 0 ? photos[currentIndex - 1] : null;
+  const nextPhoto = currentIndex < photos.length - 1 ? photos[currentIndex + 1] : null;
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "ArrowLeft" && prevPhoto) {
+      router.push(`/photo/${prevPhoto.slug}`);
+    } else if (e.key === "ArrowRight" && nextPhoto) {
+      router.push(`/photo/${nextPhoto.slug}`);
+    } else if (e.key === "Escape") {
+      router.push("/");
+    }
+  }, [prevPhoto, nextPhoto, router]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  if (!slug) return null;
 
   if (!photo) {
     notFound();
   }
 
-  const currentIndex = photos.findIndex((p) => p.slug === photo.slug);
-  const prevPhoto = currentIndex > 0 ? photos[currentIndex - 1] : null;
-  const nextPhoto = currentIndex < photos.length - 1 ? photos[currentIndex + 1] : null;
+  // Get related photos (same category, excluding current)
+  const relatedPhotos = photos
+    .filter((p) => p.category === photo.category && p.slug !== photo.slug)
+    .slice(0, 4);
 
   return (
     <div className="pt-16 md:pt-20">
+      {/* Breadcrumb */}
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+        <nav className="flex items-center gap-2 text-xs tracking-wider text-stone-400">
+          <Link href="/" className="hover:text-[#6b9e9a] transition-colors">
+            Gallery
+          </Link>
+          <span>/</span>
+          <span className="text-[#6b9e9a]">{photo.category}</span>
+          <span>/</span>
+          <span className="text-stone-600">{photo.title}</span>
+        </nav>
+      </div>
+
+      {/* Keyboard Hint */}
+      <div className="hidden md:block fixed bottom-6 right-6 z-50">
+        <div className="flex items-center gap-2 text-xs text-stone-400 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
+          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">←</kbd>
+          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">→</kbd>
+          <span>Navigate</span>
+          <span className="text-stone-300 mx-1">|</span>
+          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">Esc</kbd>
+          <span>Gallery</span>
+        </div>
+      </div>
+
       {/* Hero Section - Image Left, Info Right */}
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-16">
+      <section className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           {/* Image */}
-          <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
+          <div
+            className="relative aspect-[4/3] overflow-hidden rounded-sm group cursor-zoom-in"
+            onMouseEnter={() => setShowImageHint(true)}
+            onMouseLeave={() => setShowImageHint(false)}
+          >
             <Image
               src={photo.src}
               alt={photo.title}
               fill
-              className="object-cover"
+              className={`object-cover transition-all duration-700 ${isImageLoaded ? "opacity-100" : "opacity-0"} group-hover:scale-[1.02]`}
               priority
+              onLoad={() => setIsImageLoaded(true)}
             />
+            {/* Image loading skeleton */}
+            {!isImageLoaded && (
+              <div className="absolute inset-0 bg-stone-200 animate-pulse" />
+            )}
+            {/* Hover hint */}
+            <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity duration-300 ${showImageHint ? "opacity-100" : "opacity-0"}`}>
+              <div className="flex items-center gap-2 text-white text-sm">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+                <span>View Full Size</span>
+              </div>
+            </div>
           </div>
 
           {/* Info */}
-          <div className="lg:py-8">
+          <div className="lg:py-4">
             {/* Meta */}
             <div className="flex flex-wrap items-center gap-3 text-xs tracking-[0.2em] uppercase text-stone-400 mb-6">
-              <span className="text-[#6b9e9a]">{photo.category}</span>
-              <span>·</span>
+              <span className="px-3 py-1 bg-[#6b9e9a]/10 text-[#6b9e9a] rounded-full">
+                {photo.category}
+              </span>
               <span>{photo.location}</span>
               <span>·</span>
               <span>{photo.date}</span>
@@ -264,19 +335,46 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
             </h1>
 
             {/* Story */}
-            <p className="text-stone-600 leading-relaxed mb-8">
+            <p className="text-stone-600 leading-relaxed mb-8 text-lg">
               {photo.story}
             </p>
 
             {/* Technical Info */}
-            <div className="flex gap-8 py-6 border-t border-b border-stone-200">
+            <div className="grid grid-cols-2 gap-6 py-6 border-t border-b border-stone-200 mb-8">
               <div>
                 <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Camera</p>
-                <p className="text-sm text-stone-700">{photo.camera}</p>
+                <p className="text-sm text-stone-700 font-medium">{photo.camera}</p>
               </div>
               <div>
                 <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Lens</p>
-                <p className="text-sm text-stone-700">{photo.lens}</p>
+                <p className="text-sm text-stone-700 font-medium">{photo.lens}</p>
+              </div>
+            </div>
+
+            {/* Share Buttons */}
+            <div>
+              <p className="text-xs tracking-widest uppercase text-stone-400 mb-4">Share this photo</p>
+              <div className="flex gap-3">
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
+                  </svg>
+                </button>
+                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -284,7 +382,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
       </section>
 
       {/* Behind The Scene */}
-      <section className="border-t border-stone-200">
+      <section className="border-t border-stone-200 bg-stone-50/50">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 md:py-24">
           <p className="text-xs tracking-[0.3em] uppercase text-[#6b9e9a] mb-4">Behind The Scene</p>
           <h2 className="font-serif text-2xl md:text-3xl text-stone-800 mb-8">拍攝故事</h2>
@@ -294,6 +392,46 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
         </div>
       </section>
 
+      {/* Related Photos */}
+      {relatedPhotos.length > 0 && (
+        <section className="border-t border-stone-200 py-16 md:py-20">
+          <div className="max-w-7xl mx-auto px-4 md:px-6">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">More {photo.category}</p>
+                <h2 className="font-serif text-2xl md:text-3xl text-stone-700">Related Photos</h2>
+              </div>
+              <Link
+                href="/"
+                className="text-sm text-stone-500 hover:text-[#6b9e9a] transition-colors flex items-center gap-2"
+              >
+                View All <span>→</span>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {relatedPhotos.map((related) => (
+                <Link key={related.slug} href={`/photo/${related.slug}`} className="group block">
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-sm mb-3">
+                    <Image
+                      src={related.src}
+                      alt={related.title}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                  <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors">
+                    {related.title}
+                  </p>
+                  <p className="text-xs text-stone-400">{related.location}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Navigation */}
       <section className="border-t border-stone-200">
         <div className="max-w-7xl mx-auto">
@@ -302,7 +440,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
             {prevPhoto ? (
               <Link
                 href={`/photo/${prevPhoto.slug}`}
-                className="group flex items-center gap-4 p-6 md:p-10 hover:bg-stone-100 transition-colors duration-300"
+                className="group flex items-center gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
               >
                 <span className="text-2xl text-stone-300 group-hover:text-[#6b9e9a] transition-colors">←</span>
                 <div className="hidden md:block">
@@ -317,7 +455,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
             {/* Back to Gallery */}
             <Link
               href="/"
-              className="flex items-center justify-center p-6 md:p-10 border-x border-stone-200 hover:bg-stone-100 transition-colors duration-300"
+              className="flex items-center justify-center p-6 md:p-10 border-x border-stone-200 hover:bg-stone-50 transition-colors duration-300"
             >
               <span className="text-xs tracking-[0.2em] uppercase text-stone-500 hover:text-[#6b9e9a] transition-colors">
                 Back to Gallery
@@ -328,7 +466,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ slug: st
             {nextPhoto ? (
               <Link
                 href={`/photo/${nextPhoto.slug}`}
-                className="group flex items-center justify-end gap-4 p-6 md:p-10 hover:bg-stone-100 transition-colors duration-300"
+                className="group flex items-center justify-end gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
               >
                 <div className="hidden md:block text-right">
                   <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Next</p>
