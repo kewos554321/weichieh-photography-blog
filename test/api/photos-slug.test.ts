@@ -65,7 +65,19 @@ describe("Photos [slug] API", () => {
       expect(data).toEqual(mockPhoto);
       expect(mockPrisma.photo.findUnique).toHaveBeenCalledWith({
         where: { slug: "test-photo" },
-        include: { tags: true },
+        include: {
+          tags: true,
+          article: {
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              excerpt: true,
+              cover: true,
+              status: true,
+            },
+          },
+        },
       });
     });
 

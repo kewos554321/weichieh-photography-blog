@@ -65,7 +65,20 @@ describe("Articles [slug] API", () => {
       expect(data).toEqual(mockArticle);
       expect(mockPrisma.article.findUnique).toHaveBeenCalledWith({
         where: { slug: "test-article" },
-        include: { tags: true },
+        include: {
+          tags: true,
+          photos: {
+            where: { status: "published" },
+            select: {
+              id: true,
+              slug: true,
+              title: true,
+              src: true,
+              location: true,
+            },
+            orderBy: { date: "desc" },
+          },
+        },
       });
     });
 

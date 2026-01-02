@@ -927,14 +927,14 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
         }
       }
 
-      // 更新表單（包含 title、story、category、tags）
-      const newSlug = data.title
-        ? data.title
-            .toLowerCase()
-            .replace(/[^a-z0-9\u4e00-\u9fff\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-") + "-" + Date.now()
+      // 更新表單（包含所有 AI 回傳的欄位）
+      // 使用 AI 產生的英文 slug，加上時間戳確保唯一性
+      const newSlug = data.slug
+        ? data.slug + "-" + Date.now()
         : formData.slug;
+
+      // 處理日期：如果 AI 有回傳日期則使用，否則使用今天
+      const aiDate = data.date || new Date().toISOString().split("T")[0];
 
       setFormData({
         ...formData,
@@ -943,6 +943,11 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
         story: data.story || formData.story,
         category: data.category || formData.category,
         tagIds: aiTagIds.length > 0 ? aiTagIds : formData.tagIds,
+        // 新增欄位：只有 AI 回傳有效值時才覆蓋
+        location: data.location || formData.location,
+        date: aiDate,
+        camera: data.camera || formData.camera,
+        lens: data.lens || formData.lens,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "AI 生成失敗");
@@ -1033,6 +1038,46 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
               {error}
             </div>
           )}
+
+          {/* AI Auto-fill Section - At the very top */}
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-stone-700 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  AI 智慧填寫
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  上傳圖片後點擊「開始分析」，自動填寫所有欄位
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateStory}
+                disabled={isGeneratingStory || (!imagePreview && !formData.image)}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isGeneratingStory ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    AI 分析中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    開始分析
+                  </>
+                )}
+              </button>
+            </div>
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="可選：輸入額外提示（如：這是在東京拍的、使用 Sony A7IV 等）"
+              className="w-full px-3 py-2 border border-purple-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -1213,42 +1258,10 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
           </div>
 
           {/* Story */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-stone-700">
-                Story *
-              </label>
-              <button
-                type="button"
-                onClick={handleGenerateStory}
-                disabled={isGeneratingStory || (!imagePreview && !formData.image)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGeneratingStory ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    AI 分析中...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    AI 自動填寫
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* AI Prompt Input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="可選：輸入提示詞引導 AI（AI 將自動填寫標題、分類、標籤、故事）"
-                className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-purple-50/50"
-              />
-            </div>
-
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">
+              Story *
+            </label>
             <textarea
               value={formData.story}
               onChange={(e) =>
