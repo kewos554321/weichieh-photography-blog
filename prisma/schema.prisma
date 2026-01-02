@@ -43,6 +43,14 @@ model PhotoTag {
   createdAt DateTime @default(now())
 }
 
+model PhotoCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 model Article {
   id          Int          @id @default(autoincrement())
   slug        String       @unique
@@ -73,4 +81,12 @@ model ArticleTag {
   name      String    @unique
   articles  Article[]
   createdAt DateTime  @default(now())
+}
+
+model ArticleCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }

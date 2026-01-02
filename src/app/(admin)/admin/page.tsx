@@ -26,18 +26,31 @@ import {
   AlertCircle,
   Sparkles,
   Loader2,
+  Settings,
+  FolderOpen,
+  GripVertical,
 } from "lucide-react";
 
-type Tab = "photos" | "articles";
+type Section = "photos" | "articles" | "settings";
+type SettingsTab = "photo-categories" | "photo-tags" | "article-categories" | "article-tags";
 
 interface PhotoTag {
   id: number;
   name: string;
+  _count?: { photos: number };
 }
 
 interface ArticleTag {
   id: number;
   name: string;
+  _count?: { articles: number };
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
 }
 
 interface Photo {
@@ -73,20 +86,113 @@ interface Article {
 }
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("photos");
+  const [activeSection, setActiveSection] = useState<Section>("photos");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("photo-categories");
 
   return (
-    <div className="min-h-screen bg-stone-100">
-      {/* Header */}
-      <header className="bg-stone-900 text-white">
-        <nav className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="font-serif text-xl">
-              WeiChieh
-            </Link>
-            <span className="text-stone-500">|</span>
-            <span className="text-sm text-stone-400">Admin</span>
+    <div className="min-h-screen bg-stone-100 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-stone-900 text-white flex flex-col fixed h-full">
+        {/* Logo */}
+        <div className="p-4 border-b border-stone-700">
+          <Link href="/" className="flex items-center gap-2 text-lg font-serif">
+            <span>WeiChieh</span>
+            <span className="text-stone-500 text-sm">Admin</span>
+          </Link>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          <button
+            onClick={() => setActiveSection("photos")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              activeSection === "photos"
+                ? "bg-white/10 text-white"
+                : "text-stone-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <ImageIcon className="w-5 h-5" />
+            Photos
+          </button>
+          <button
+            onClick={() => setActiveSection("articles")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              activeSection === "articles"
+                ? "bg-white/10 text-white"
+                : "text-stone-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            Articles
+          </button>
+
+          <div className="pt-4 mt-4 border-t border-stone-700">
+            <button
+              onClick={() => setActiveSection("settings")}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                activeSection === "settings"
+                  ? "bg-white/10 text-white"
+                  : "text-stone-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              Settings
+            </button>
           </div>
+
+          {/* Settings Sub-menu */}
+          {activeSection === "settings" && (
+            <div className="ml-4 mt-2 space-y-1">
+              <button
+                onClick={() => setSettingsTab("photo-categories")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
+                  settingsTab === "photo-categories"
+                    ? "bg-white/10 text-white"
+                    : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4" />
+                Photo Categories
+              </button>
+              <button
+                onClick={() => setSettingsTab("photo-tags")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
+                  settingsTab === "photo-tags"
+                    ? "bg-white/10 text-white"
+                    : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Photo Tags
+              </button>
+              <button
+                onClick={() => setSettingsTab("article-categories")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
+                  settingsTab === "article-categories"
+                    ? "bg-white/10 text-white"
+                    : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4" />
+                Article Categories
+              </button>
+              <button
+                onClick={() => setSettingsTab("article-tags")}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
+                  settingsTab === "article-tags"
+                    ? "bg-white/10 text-white"
+                    : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Article Tags
+              </button>
+            </div>
+          )}
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-stone-700">
           <Link
             href="/"
             className="flex items-center gap-2 text-sm text-stone-400 hover:text-white transition-colors"
@@ -94,53 +200,478 @@ export default function AdminPage() {
             <ChevronLeft className="w-4 h-4" />
             Back to Site
           </Link>
-        </nav>
-      </header>
-
-      {/* Tabs */}
-      <div className="bg-white border-b border-stone-200">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="flex gap-8">
-            <button
-              onClick={() => setActiveTab("photos")}
-              className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "photos"
-                  ? "border-stone-900 text-stone-900"
-                  : "border-transparent text-stone-500 hover:text-stone-700"
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" />
-              Photos
-            </button>
-            <button
-              onClick={() => setActiveTab("articles")}
-              className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "articles"
-                  ? "border-stone-900 text-stone-900"
-                  : "border-transparent text-stone-500 hover:text-stone-700"
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              Articles
-            </button>
-          </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        {activeTab === "photos" ? <PhotosTab /> : <ArticlesTab />}
+      {/* Main Content */}
+      <main className="flex-1 ml-64 p-8">
+        {activeSection === "photos" && <PhotosSection />}
+        {activeSection === "articles" && <ArticlesSection />}
+        {activeSection === "settings" && <SettingsSection activeTab={settingsTab} />}
       </main>
     </div>
   );
 }
 
 // ============================================
-// Photos Tab
+// Settings Section
 // ============================================
-function PhotosTab() {
+interface SettingsSectionProps {
+  activeTab: SettingsTab;
+}
+
+function SettingsSection({ activeTab }: SettingsSectionProps) {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold text-stone-900 mb-6">Settings</h1>
+      {activeTab === "photo-categories" && <PhotoCategoriesManager />}
+      {activeTab === "photo-tags" && <PhotoTagsManager />}
+      {activeTab === "article-categories" && <ArticleCategoriesManager />}
+      {activeTab === "article-tags" && <ArticleTagsManager />}
+    </div>
+  );
+}
+
+// ============================================
+// Category Manager Component (Reusable)
+// ============================================
+interface CategoryManagerProps {
+  title: string;
+  apiPath: string;
+  itemLabel: string;
+}
+
+function CategoryManager({ title, apiPath, itemLabel }: CategoryManagerProps) {
+  const [items, setItems] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch(apiPath);
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      console.error(`Failed to fetch ${itemLabel}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiPath, itemLabel]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setError(null);
+    try {
+      const res = await fetch(apiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim(), sortOrder: items.length }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
+      setNewName("");
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create");
+    }
+  };
+
+  const handleUpdate = async (id: number) => {
+    if (!editingName.trim()) return;
+    setError(null);
+    try {
+      const res = await fetch(`${apiPath}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editingName.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update");
+      }
+      setEditingId(null);
+      setEditingName("");
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm(`確定要刪除此${itemLabel}嗎？`)) return;
+    setError(null);
+    try {
+      const res = await fetch(`${apiPath}/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete");
+      }
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+    }
+  };
+
+  const startEdit = (item: Category) => {
+    setEditingId(item.id);
+    setEditingName(item.name);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-medium text-stone-900 mb-4">{title}</h2>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Add New */}
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder={`新增${itemLabel}...`}
+          className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <button
+          onClick={handleAdd}
+          className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors text-sm"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="text-center text-stone-500 py-8">Loading...</div>
+      ) : items.length === 0 ? (
+        <div className="text-center text-stone-500 py-8">尚無{itemLabel}</div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-3 p-3 bg-stone-50 rounded-lg group"
+            >
+              <GripVertical className="w-4 h-4 text-stone-300" />
+              {editingId === item.id ? (
+                <>
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="flex-1 px-2 py-1 border border-stone-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleUpdate(item.id);
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleUpdate(item.id)}
+                    className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="p-1.5 text-stone-500 hover:bg-stone-100 rounded"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm text-stone-700">{item.name}</span>
+                  <span className="text-xs text-stone-400 font-mono">{item.slug}</span>
+                  <button
+                    onClick={() => startEdit(item)}
+                    className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================
+// Tag Manager Component (Reusable)
+// ============================================
+interface TagManagerProps {
+  title: string;
+  apiPath: string;
+  countField: string;
+}
+
+function TagManager({ title, apiPath, countField }: TagManagerProps) {
+  const [items, setItems] = useState<(PhotoTag | ArticleTag)[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch(apiPath);
+      const data = await res.json();
+      setItems(Array.isArray(data) ? data : []);
+    } catch {
+      console.error("Failed to fetch tags");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiPath]);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    setError(null);
+    try {
+      const res = await fetch(apiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create");
+      }
+      setNewName("");
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create");
+    }
+  };
+
+  const handleUpdate = async (id: number) => {
+    if (!editingName.trim()) return;
+    setError(null);
+    try {
+      const res = await fetch(`${apiPath}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editingName.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update");
+      }
+      setEditingId(null);
+      setEditingName("");
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("確定要刪除此標籤嗎？")) return;
+    setError(null);
+    try {
+      const res = await fetch(`${apiPath}/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete");
+      }
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+    }
+  };
+
+  const startEdit = (item: PhotoTag | ArticleTag) => {
+    setEditingId(item.id);
+    setEditingName(item.name);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingName("");
+  };
+
+  const getCount = (item: PhotoTag | ArticleTag) => {
+    const count = item._count as Record<string, number> | undefined;
+    return count?.[countField] ?? 0;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-medium text-stone-900 mb-4">{title}</h2>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Add New */}
+      <div className="flex gap-2 mb-6">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="新增標籤..."
+          className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <button
+          onClick={handleAdd}
+          className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors text-sm"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="text-center text-stone-500 py-8">Loading...</div>
+      ) : items.length === 0 ? (
+        <div className="text-center text-stone-500 py-8">尚無標籤</div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${
+                editingId === item.id
+                  ? "border-stone-400 bg-white"
+                  : "border-stone-200 bg-stone-50 hover:border-stone-300"
+              }`}
+            >
+              {editingId === item.id ? (
+                <>
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="w-24 px-1 py-0.5 text-sm border-none focus:outline-none bg-transparent"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleUpdate(item.id);
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleUpdate(item.id)}
+                    className="p-0.5 text-green-600 hover:text-green-700"
+                  >
+                    <CheckCircle className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="p-0.5 text-stone-500 hover:text-stone-700"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-sm text-stone-700">{item.name}</span>
+                  <span className="text-xs text-stone-400">({getCount(item)})</span>
+                  <button
+                    onClick={() => startEdit(item)}
+                    className="p-0.5 text-stone-400 hover:text-stone-700"
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="p-0.5 text-stone-400 hover:text-red-600"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Specific Managers
+function PhotoCategoriesManager() {
+  return (
+    <CategoryManager
+      title="Photo Categories"
+      apiPath="/api/photos/categories"
+      itemLabel="分類"
+    />
+  );
+}
+
+function PhotoTagsManager() {
+  return (
+    <TagManager
+      title="Photo Tags"
+      apiPath="/api/photos/tags"
+      countField="photos"
+    />
+  );
+}
+
+function ArticleCategoriesManager() {
+  return (
+    <CategoryManager
+      title="Article Categories"
+      apiPath="/api/articles/categories"
+      itemLabel="分類"
+    />
+  );
+}
+
+function ArticleTagsManager() {
+  return (
+    <TagManager
+      title="Article Tags"
+      apiPath="/api/articles/tags"
+      countField="articles"
+    />
+  );
+}
+
+// ============================================
+// Photos Section
+// ============================================
+function PhotosSection() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [tags, setTags] = useState<PhotoTag[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -148,8 +679,6 @@ function PhotosTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-
-  const categories = ["All", "Portrait", "Landscape", "Street", "Nature"];
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -179,10 +708,21 @@ function PhotosTab() {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/photos/categories");
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      console.error("Failed to fetch categories");
+    }
+  }, []);
+
   useEffect(() => {
     fetchPhotos();
     fetchTags();
-  }, [fetchPhotos, fetchTags]);
+    fetchCategories();
+  }, [fetchPhotos, fetchTags, fetchCategories]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這張照片嗎？")) return;
@@ -215,57 +755,15 @@ function PhotosTab() {
     fetchTags();
   };
 
+  // 合併資料庫分類和預設分類
+  const allCategories = categories.length > 0
+    ? ["All", ...categories.map((c) => c.name)]
+    : ["All", "Portrait", "Landscape", "Street", "Nature"];
+
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="flex flex-wrap gap-3 items-center">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              placeholder="Search photos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64"
-            />
-          </div>
-
-          {/* Category Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tag Filter */}
-          {tags.length > 0 && (
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="px-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
-            >
-              <option value="">All Tags</option>
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.name}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* Add Buttons */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-stone-900">Photos</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setIsBatchModalOpen(true)}
@@ -282,6 +780,53 @@ function PhotosTab() {
             Add Photo
           </button>
         </div>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <input
+            type="text"
+            placeholder="Search photos..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64 bg-white"
+          />
+        </div>
+
+        {/* Category Filter */}
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+          >
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tag Filter */}
+        {tags.length > 0 && (
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="px-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
+          >
+            <option value="">All Tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.name}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Table */}
@@ -414,6 +959,7 @@ function PhotosTab() {
         <PhotoModal
           photo={editingPhoto}
           tags={tags}
+          categories={categories}
           onClose={handleModalClose}
           onSuccess={handleModalSuccess}
         />
@@ -505,7 +1051,7 @@ function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) {
       const results = await uploadBatch(
         files.map((f) => f.file),
         "photos",
-        (completed, total, filename) => {
+        (completed) => {
           setCurrentFileIndex(completed);
           setFiles((prev) =>
             prev.map((f, i) =>
@@ -553,7 +1099,7 @@ function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) {
         }))
       );
       setUploadComplete(true);
-    } catch (err) {
+    } catch {
       setFiles((prev) =>
         prev.map((f) =>
           f.status === "uploading"
@@ -762,6 +1308,7 @@ function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) {
 interface PhotoModalProps {
   photo: Photo | null;
   tags: PhotoTag[];
+  categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -772,7 +1319,7 @@ interface ArticleOption {
   title: string;
 }
 
-function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
+function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -783,11 +1330,17 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [articles, setArticles] = useState<ArticleOption[]>([]);
+  const [localTags, setLocalTags] = useState<PhotoTag[]>(tags);
+
+  // 合併資料庫分類和預設分類
+  const allCategories = categories.length > 0
+    ? categories.map((c) => c.name)
+    : ["Portrait", "Landscape", "Street", "Nature"];
 
   const [formData, setFormData] = useState({
     title: photo?.title || "",
     slug: photo?.slug || "",
-    category: photo?.category || "Portrait",
+    category: photo?.category || allCategories[0],
     location: photo?.location || "",
     date: photo?.date ? photo.date.split("T")[0] : "",
     camera: photo?.camera || "",
@@ -851,7 +1404,7 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
       });
       if (res.ok) {
         const newTag = await res.json();
-        tags.push(newTag);
+        setLocalTags([...localTags, newTag]);
         setFormData({ ...formData, tagIds: [...formData.tagIds, newTag.id] });
         setNewTagName("");
       }
@@ -902,7 +1455,7 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
       if (data.tags && Array.isArray(data.tags)) {
         for (const tagName of data.tags) {
           // 檢查標籤是否已存在
-          const existingTag = tags.find(
+          const existingTag = localTags.find(
             (t) => t.name.toLowerCase() === tagName.toLowerCase()
           );
           if (existingTag) {
@@ -917,7 +1470,7 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
               });
               if (tagRes.ok) {
                 const newTag = await tagRes.json();
-                tags.push(newTag);
+                setLocalTags((prev) => [...prev, newTag]);
                 aiTagIds.push(newTag.id);
               }
             } catch {
@@ -1122,10 +1675,11 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
                 }
                 className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
               >
-                <option value="Portrait">Portrait</option>
-                <option value="Landscape">Landscape</option>
-                <option value="Street">Street</option>
-                <option value="Nature">Nature</option>
+                {allCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -1199,7 +1753,7 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
               Tags
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {tags.map((tag) => (
+              {localTags.map((tag) => (
                 <button
                   key={tag.id}
                   type="button"
@@ -1414,19 +1968,18 @@ function PhotoModal({ photo, tags, onClose, onSuccess }: PhotoModalProps) {
 }
 
 // ============================================
-// Articles Tab
+// Articles Section
 // ============================================
-function ArticlesTab() {
+function ArticlesSection() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [tags, setTags] = useState<ArticleTag[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
   const [tagFilter, setTagFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-
-  const categories = ["全部", "技巧分享", "旅行日記", "攝影思考"];
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -1456,10 +2009,21 @@ function ArticlesTab() {
     }
   }, []);
 
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/articles/categories");
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      console.error("Failed to fetch categories");
+    }
+  }, []);
+
   useEffect(() => {
     fetchArticles();
     fetchTags();
-  }, [fetchArticles, fetchTags]);
+    fetchCategories();
+  }, [fetchArticles, fetchTags, fetchCategories]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這篇文章嗎？")) return;
@@ -1492,57 +2056,15 @@ function ArticlesTab() {
     fetchTags();
   };
 
+  // 合併資料庫分類和預設分類
+  const allCategories = categories.length > 0
+    ? ["全部", ...categories.map((c) => c.name)]
+    : ["全部", "技巧分享", "旅行日記", "攝影思考"];
+
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="flex flex-wrap gap-3 items-center">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              placeholder="Search articles..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64"
-            />
-          </div>
-
-          {/* Category Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tag Filter */}
-          {tags.length > 0 && (
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="px-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
-            >
-              <option value="">All Tags</option>
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.name}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* Add Button */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-stone-900">Articles</h1>
         <button
           onClick={handleCreate}
           className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
@@ -1550,6 +2072,53 @@ function ArticlesTab() {
           <Plus className="w-4 h-4" />
           Add Article
         </button>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <input
+            type="text"
+            placeholder="Search articles..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64 bg-white"
+          />
+        </div>
+
+        {/* Category Filter */}
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+          >
+            {allCategories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Tag Filter */}
+        {tags.length > 0 && (
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="px-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
+          >
+            <option value="">All Tags</option>
+            {tags.map((tag) => (
+              <option key={tag.id} value={tag.name}>
+                {tag.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Table */}
@@ -1681,6 +2250,7 @@ function ArticlesTab() {
         <ArticleModal
           article={editingArticle}
           tags={tags}
+          categories={categories}
           onClose={handleModalClose}
           onSuccess={handleModalSuccess}
         />
@@ -1695,11 +2265,12 @@ function ArticlesTab() {
 interface ArticleModalProps {
   article: Article | null;
   tags: ArticleTag[];
+  categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) {
+function ArticleModal({ article, tags, categories, onClose, onSuccess }: ArticleModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1707,11 +2278,17 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
     article?.cover || null
   );
   const [newTagName, setNewTagName] = useState("");
+  const [localTags, setLocalTags] = useState<ArticleTag[]>(tags);
+
+  // 合併資料庫分類和預設分類
+  const allCategories = categories.length > 0
+    ? categories.map((c) => c.name)
+    : ["技巧分享", "旅行日記", "攝影思考"];
 
   const [formData, setFormData] = useState({
     title: article?.title || "",
     slug: article?.slug || "",
-    category: article?.category || "技巧分享",
+    category: article?.category || allCategories[0],
     excerpt: article?.excerpt || "",
     content: article?.content || "",
     cover: null as File | null,
@@ -1762,7 +2339,7 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
       });
       if (res.ok) {
         const newTag = await res.json();
-        tags.push(newTag);
+        setLocalTags([...localTags, newTag]);
         setFormData({ ...formData, tagIds: [...formData.tagIds, newTag.id] });
         setNewTagName("");
       }
@@ -1891,9 +2468,11 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
               }
               className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
             >
-              <option value="技巧分享">技巧分享</option>
-              <option value="旅行日記">旅行日記</option>
-              <option value="攝影思考">攝影思考</option>
+              {allCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -1904,7 +2483,7 @@ function ArticleModal({ article, tags, onClose, onSuccess }: ArticleModalProps) 
               Tags
             </label>
             <div className="flex flex-wrap gap-2 mb-2">
-              {tags.map((tag) => (
+              {localTags.map((tag) => (
                 <button
                   key={tag.id}
                   type="button"
