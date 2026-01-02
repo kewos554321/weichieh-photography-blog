@@ -1481,26 +1481,47 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
       }
 
       // 更新表單（包含所有 AI 回傳的欄位）
-      // 使用 AI 產生的英文 slug，加上時間戳確保唯一性
-      const newSlug = data.slug
-        ? data.slug + "-" + Date.now()
-        : formData.slug;
+      // 使用 functional update 避免閉包過時問題
+      const aiTitle = data.title || "";
+      const aiSlug = data.slug || "";
+
+      // 生成 slug：優先使用 AI slug，否則從 title 生成
+      let generatedSlug = "";
+      if (aiSlug) {
+        generatedSlug = aiSlug + "-" + Date.now();
+      } else if (aiTitle) {
+        // 從 title 生成 slug
+        generatedSlug = aiTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .trim() + "-" + Date.now();
+      }
 
       // 處理日期：如果 AI 有回傳日期則使用，否則使用今天
       const aiDate = data.date || new Date().toISOString().split("T")[0];
 
-      setFormData({
-        ...formData,
-        title: data.title || formData.title,
-        slug: isEditMode ? formData.slug : newSlug,
-        story: data.story || formData.story,
-        category: data.category || formData.category,
-        tagIds: aiTagIds.length > 0 ? aiTagIds : formData.tagIds,
-        // 新增欄位：只有 AI 回傳有效值時才覆蓋
-        location: data.location || formData.location,
-        date: aiDate,
-        camera: data.camera || formData.camera,
-        lens: data.lens || formData.lens,
+      setFormData((prev) => {
+        // 判斷是否可以更新 slug：
+        // 1. 新增模式 (isEditMode = false)
+        // 2. 或者是剛 batch upload 的照片 (story 是預設值 "待編輯...")
+        const isNewOrDraft = !isEditMode || prev.story === "待編輯..." || prev.story === "";
+        const finalSlug = (isNewOrDraft && generatedSlug) ? generatedSlug : prev.slug;
+
+        return {
+          ...prev,
+          title: aiTitle || prev.title,
+          slug: finalSlug,
+          story: data.story || prev.story,
+          category: data.category || prev.category,
+          tagIds: aiTagIds.length > 0 ? aiTagIds : prev.tagIds,
+          // 新增欄位：只有 AI 回傳有效值時才覆蓋
+          location: data.location || prev.location,
+          date: aiDate,
+          camera: data.camera || prev.camera,
+          lens: data.lens || prev.lens,
+        };
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "AI 生成失敗");
@@ -1648,6 +1669,9 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">
                 Slug
+                {isEditMode && formData.story !== "待編輯..." && formData.story !== "" && (
+                  <span className="text-xs text-stone-400 ml-2">(編輯模式下無法修改)</span>
+                )}
               </label>
               <input
                 type="text"
@@ -1657,7 +1681,7 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
                 }
                 className="w-full px-3 py-2 border border-stone-300 rounded-md bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-500"
                 required
-                disabled={isEditMode}
+                disabled={isEditMode && formData.story !== "待編輯..." && formData.story !== ""}
               />
             </div>
           </div>
@@ -1746,45 +1770,139 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
             </div>
           </div>
 
-          {/* Tags */}
+          {/* Tags - Searchable */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">
               <Tag className="w-3 h-3 inline mr-1" />
               Tags
             </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {localTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleTagToggle(tag.id)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    formData.tagIds.includes(tag.id)
-                      ? "bg-blue-500 text-white"
-                      : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              ))}
+
+            {/* Selected Tags */}
+            {formData.tagIds.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3 p-2 bg-blue-50 rounded-lg">
+                {formData.tagIds.map((tagId) => {
+                  const tag = localTags.find((t) => t.id === tagId);
+                  if (!tag) return null;
+                  return (
+                    <span
+                      key={tag.id}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-blue-500 text-white rounded-full"
+                    >
+                      {tag.name}
+                      <button
+                        type="button"
+                        onClick={() => handleTagToggle(tag.id)}
+                        className="hover:bg-blue-600 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Search/Add Input */}
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="搜尋或新增標籤..."
+                    className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        // 如果有精確匹配的標籤，選中它；否則新增
+                        const exactMatch = localTags.find(
+                          (t) => t.name.toLowerCase() === newTagName.toLowerCase()
+                        );
+                        if (exactMatch) {
+                          if (!formData.tagIds.includes(exactMatch.id)) {
+                            handleTagToggle(exactMatch.id);
+                          }
+                          setNewTagName("");
+                        } else if (newTagName.trim()) {
+                          handleAddTag();
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                {newTagName.trim() && !localTags.some(
+                  (t) => t.name.toLowerCase() === newTagName.toLowerCase()
+                ) && (
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    新增
+                  </button>
+                )}
+              </div>
+
+              {/* Filtered Tags Dropdown */}
+              {newTagName && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {localTags
+                    .filter((tag) =>
+                      tag.name.toLowerCase().includes(newTagName.toLowerCase()) &&
+                      !formData.tagIds.includes(tag.id)
+                    )
+                    .slice(0, 10)
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          handleTagToggle(tag.id);
+                          setNewTagName("");
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-stone-100 flex items-center justify-between"
+                      >
+                        <span>{tag.name}</span>
+                        <Plus className="w-4 h-4 text-stone-400" />
+                      </button>
+                    ))}
+                  {localTags.filter((tag) =>
+                    tag.name.toLowerCase().includes(newTagName.toLowerCase()) &&
+                    !formData.tagIds.includes(tag.id)
+                  ).length === 0 && newTagName.trim() && (
+                    <div className="px-3 py-2 text-sm text-stone-500">
+                      按 Enter 新增「{newTagName}」
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                placeholder="Add new tag..."
-                className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-              />
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="px-3 py-2 bg-stone-100 text-stone-700 rounded-md hover:bg-stone-200 text-sm"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+
+            {/* All Available Tags (collapsed by default, show when no search) */}
+            {!newTagName && localTags.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-stone-500 cursor-pointer hover:text-stone-700">
+                  瀏覽所有標籤 ({localTags.length})
+                </summary>
+                <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-stone-50 rounded-lg max-h-32 overflow-y-auto">
+                  {localTags
+                    .filter((tag) => !formData.tagIds.includes(tag.id))
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => handleTagToggle(tag.id)}
+                        className="px-2 py-0.5 text-xs bg-white border border-stone-200 text-stone-600 rounded hover:border-blue-400 hover:text-blue-600 transition-colors"
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                </div>
+              </details>
+            )}
           </div>
 
           {/* Image */}
@@ -2476,45 +2594,138 @@ function ArticleModal({ article, tags, categories, onClose, onSuccess }: Article
             </select>
           </div>
 
-          {/* Tags */}
+          {/* Tags - Searchable */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-2">
               <Tag className="w-3 h-3 inline mr-1" />
               Tags
             </label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {localTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => handleTagToggle(tag.id)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    formData.tagIds.includes(tag.id)
-                      ? "bg-blue-500 text-white"
-                      : "bg-stone-100 text-stone-700 hover:bg-stone-200"
-                  }`}
-                >
-                  {tag.name}
-                </button>
-              ))}
+
+            {/* Selected Tags */}
+            {formData.tagIds.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3 p-2 bg-blue-50 rounded-lg">
+                {formData.tagIds.map((tagId) => {
+                  const tag = localTags.find((t) => t.id === tagId);
+                  if (!tag) return null;
+                  return (
+                    <span
+                      key={tag.id}
+                      className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-blue-500 text-white rounded-full"
+                    >
+                      {tag.name}
+                      <button
+                        type="button"
+                        onClick={() => handleTagToggle(tag.id)}
+                        className="hover:bg-blue-600 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Search/Add Input */}
+            <div className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    placeholder="搜尋或新增標籤..."
+                    className="w-full pl-10 pr-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const exactMatch = localTags.find(
+                          (t) => t.name.toLowerCase() === newTagName.toLowerCase()
+                        );
+                        if (exactMatch) {
+                          if (!formData.tagIds.includes(exactMatch.id)) {
+                            handleTagToggle(exactMatch.id);
+                          }
+                          setNewTagName("");
+                        } else if (newTagName.trim()) {
+                          handleAddTag();
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                {newTagName.trim() && !localTags.some(
+                  (t) => t.name.toLowerCase() === newTagName.toLowerCase()
+                ) && (
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    新增
+                  </button>
+                )}
+              </div>
+
+              {/* Filtered Tags Dropdown */}
+              {newTagName && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                  {localTags
+                    .filter((tag) =>
+                      tag.name.toLowerCase().includes(newTagName.toLowerCase()) &&
+                      !formData.tagIds.includes(tag.id)
+                    )
+                    .slice(0, 10)
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          handleTagToggle(tag.id);
+                          setNewTagName("");
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-stone-100 flex items-center justify-between"
+                      >
+                        <span>{tag.name}</span>
+                        <Plus className="w-4 h-4 text-stone-400" />
+                      </button>
+                    ))}
+                  {localTags.filter((tag) =>
+                    tag.name.toLowerCase().includes(newTagName.toLowerCase()) &&
+                    !formData.tagIds.includes(tag.id)
+                  ).length === 0 && newTagName.trim() && (
+                    <div className="px-3 py-2 text-sm text-stone-500">
+                      按 Enter 新增「{newTagName}」
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                placeholder="Add new tag..."
-                className="flex-1 px-3 py-2 border border-stone-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
-              />
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="px-3 py-2 bg-stone-100 text-stone-700 rounded-md hover:bg-stone-200 text-sm"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            </div>
+
+            {/* All Available Tags */}
+            {!newTagName && localTags.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-stone-500 cursor-pointer hover:text-stone-700">
+                  瀏覽所有標籤 ({localTags.length})
+                </summary>
+                <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-stone-50 rounded-lg max-h-32 overflow-y-auto">
+                  {localTags
+                    .filter((tag) => !formData.tagIds.includes(tag.id))
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => handleTagToggle(tag.id)}
+                        className="px-2 py-0.5 text-xs bg-white border border-stone-200 text-stone-600 rounded hover:border-blue-400 hover:text-blue-600 transition-colors"
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                </div>
+              </details>
+            )}
           </div>
 
           {/* Cover */}
