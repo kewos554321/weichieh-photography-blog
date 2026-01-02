@@ -195,9 +195,18 @@ Borders:        stone-200/50 (subtle)
 
 ## Testing
 
-No test framework is currently configured. Consider adding:
-- Jest + React Testing Library for unit/integration tests
-- Playwright or Cypress for E2E tests
+- **Framework**: Vitest + React Testing Library
+- **Coverage Requirement**: 100% (statements, branches, functions, lines)
+- **Run Tests**: `npm test`
+- **Run Coverage**: `npm run test:coverage`
+
+### Before Committing
+- Run `npm run test:coverage` to ensure 100% coverage
+- All tests must pass before merging
+
+### Test File Convention
+- Test files: `*.test.ts` or `*.test.tsx`
+- Location: `/test` directory (e.g., `test/hooks/useUpload.test.ts`)
 
 ---
 
