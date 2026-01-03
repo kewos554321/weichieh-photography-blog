@@ -21,6 +21,7 @@ model Photo {
   behindTheScene String?    @db.Text
   status         String     @default("published")
   publishedAt    DateTime?
+  viewCount      Int        @default(0)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   tags           PhotoTag[]
@@ -34,6 +35,7 @@ model Photo {
   @@index([status])
   @@index([publishedAt])
   @@index([articleId])
+  @@index([viewCount])
 }
 
 model PhotoTag {
@@ -63,6 +65,7 @@ model Article {
   date        DateTime
   status      String       @default("draft")
   publishedAt DateTime?
+  viewCount   Int          @default(0)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   tags        ArticleTag[]
@@ -74,6 +77,7 @@ model Article {
   @@index([date])
   @@index([status])
   @@index([publishedAt])
+  @@index([viewCount])
 }
 
 model ArticleTag {
@@ -89,4 +93,11 @@ model ArticleCategory {
   slug      String   @unique
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+model SiteSettings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
 }

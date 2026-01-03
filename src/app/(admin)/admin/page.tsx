@@ -30,10 +30,16 @@ import {
   Settings,
   FolderOpen,
   GripVertical,
+  User,
+  List,
+  Globe,
+  BarChart3,
 } from "lucide-react";
 
-type Section = "photos" | "articles" | "settings";
-type SettingsTab = "photo-categories" | "photo-tags" | "article-categories" | "article-tags";
+type Section = "photos" | "articles" | "analytics" | "settings";
+type PhotoTab = "list" | "categories" | "tags";
+type ArticleTab = "list" | "categories" | "tags";
+type SettingsTab = "profile" | "seo";
 
 interface PhotoTag {
   id: number;
@@ -88,7 +94,9 @@ interface Article {
 
 export default function AdminPage() {
   const [activeSection, setActiveSection] = useState<Section>("photos");
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("photo-categories");
+  const [photoTab, setPhotoTab] = useState<PhotoTab>("list");
+  const [articleTab, setArticleTab] = useState<ArticleTab>("list");
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
 
   return (
     <div className="min-h-screen bg-stone-100 flex">
@@ -104,6 +112,7 @@ export default function AdminPage() {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
+          {/* Photos Section */}
           <button
             onClick={() => setActiveSection("photos")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -115,6 +124,39 @@ export default function AdminPage() {
             <ImageIcon className="w-5 h-5" />
             Photos
           </button>
+          {activeSection === "photos" && (
+            <div className="ml-4 mt-1 space-y-0.5">
+              <button
+                onClick={() => setPhotoTab("list")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  photoTab === "list" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <List className="w-4 h-4" />
+                All Photos
+              </button>
+              <button
+                onClick={() => setPhotoTab("categories")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  photoTab === "categories" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4" />
+                Categories
+              </button>
+              <button
+                onClick={() => setPhotoTab("tags")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  photoTab === "tags" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Tags
+              </button>
+            </div>
+          )}
+
+          {/* Articles Section */}
           <button
             onClick={() => setActiveSection("articles")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -126,7 +168,52 @@ export default function AdminPage() {
             <FileText className="w-5 h-5" />
             Articles
           </button>
+          {activeSection === "articles" && (
+            <div className="ml-4 mt-1 space-y-0.5">
+              <button
+                onClick={() => setArticleTab("list")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  articleTab === "list" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <List className="w-4 h-4" />
+                All Articles
+              </button>
+              <button
+                onClick={() => setArticleTab("categories")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  articleTab === "categories" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <FolderOpen className="w-4 h-4" />
+                Categories
+              </button>
+              <button
+                onClick={() => setArticleTab("tags")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  articleTab === "tags" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Tags
+              </button>
+            </div>
+          )}
 
+          {/* Analytics Section */}
+          <button
+            onClick={() => setActiveSection("analytics")}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              activeSection === "analytics"
+                ? "bg-white/10 text-white"
+                : "text-stone-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            Analytics
+          </button>
+
+          {/* Settings Section */}
           <div className="pt-4 mt-4 border-t border-stone-700">
             <button
               onClick={() => setActiveSection("settings")}
@@ -140,53 +227,25 @@ export default function AdminPage() {
               Settings
             </button>
           </div>
-
-          {/* Settings Sub-menu */}
           {activeSection === "settings" && (
-            <div className="ml-4 mt-2 space-y-1">
+            <div className="ml-4 mt-1 space-y-0.5">
               <button
-                onClick={() => setSettingsTab("photo-categories")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
-                  settingsTab === "photo-categories"
-                    ? "bg-white/10 text-white"
-                    : "text-stone-500 hover:text-stone-300"
+                onClick={() => setSettingsTab("profile")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  settingsTab === "profile" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
                 }`}
               >
-                <FolderOpen className="w-4 h-4" />
-                Photo Categories
+                <User className="w-4 h-4" />
+                Profile
               </button>
               <button
-                onClick={() => setSettingsTab("photo-tags")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
-                  settingsTab === "photo-tags"
-                    ? "bg-white/10 text-white"
-                    : "text-stone-500 hover:text-stone-300"
+                onClick={() => setSettingsTab("seo")}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors ${
+                  settingsTab === "seo" ? "bg-white/10 text-white" : "text-stone-500 hover:text-stone-300"
                 }`}
               >
-                <Tag className="w-4 h-4" />
-                Photo Tags
-              </button>
-              <button
-                onClick={() => setSettingsTab("article-categories")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
-                  settingsTab === "article-categories"
-                    ? "bg-white/10 text-white"
-                    : "text-stone-500 hover:text-stone-300"
-                }`}
-              >
-                <FolderOpen className="w-4 h-4" />
-                Article Categories
-              </button>
-              <button
-                onClick={() => setSettingsTab("article-tags")}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs transition-colors ${
-                  settingsTab === "article-tags"
-                    ? "bg-white/10 text-white"
-                    : "text-stone-500 hover:text-stone-300"
-                }`}
-              >
-                <Tag className="w-4 h-4" />
-                Article Tags
+                <Globe className="w-4 h-4" />
+                SEO & Analytics
               </button>
             </div>
           )}
@@ -206,8 +265,9 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <main className="flex-1 ml-64 p-8">
-        {activeSection === "photos" && <PhotosSection />}
-        {activeSection === "articles" && <ArticlesSection />}
+        {activeSection === "photos" && <PhotosSection activeTab={photoTab} />}
+        {activeSection === "articles" && <ArticlesSection activeTab={articleTab} />}
+        {activeSection === "analytics" && <AnalyticsSection />}
         {activeSection === "settings" && <SettingsSection activeTab={settingsTab} />}
       </main>
     </div>
@@ -225,10 +285,296 @@ function SettingsSection({ activeTab }: SettingsSectionProps) {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-stone-900 mb-6">Settings</h1>
-      {activeTab === "photo-categories" && <PhotoCategoriesManager />}
-      {activeTab === "photo-tags" && <PhotoTagsManager />}
-      {activeTab === "article-categories" && <ArticleCategoriesManager />}
-      {activeTab === "article-tags" && <ArticleTagsManager />}
+      {activeTab === "profile" && <ProfileManager />}
+      {activeTab === "seo" && <SEOManager />}
+    </div>
+  );
+}
+
+// ============================================
+// Analytics Section
+// ============================================
+interface AnalyticsData {
+  overview: {
+    totalPhotos: number;
+    totalArticles: number;
+    publishedPhotos: number;
+    publishedArticles: number;
+    draftPhotos: number;
+    draftArticles: number;
+    totalViews: number;
+    photoViews: number;
+    articleViews: number;
+    recentPhotos: number;
+    recentArticles: number;
+  };
+  topPhotos: Array<{
+    id: number;
+    slug: string;
+    title: string;
+    src: string;
+    viewCount: number;
+    category: string;
+  }>;
+  topArticles: Array<{
+    id: number;
+    slug: string;
+    title: string;
+    cover: string;
+    viewCount: number;
+    category: string;
+  }>;
+  photoCategoryStats: Array<{
+    category: string;
+    count: number;
+    views: number;
+  }>;
+  articleCategoryStats: Array<{
+    category: string;
+    count: number;
+    views: number;
+  }>;
+}
+
+function AnalyticsSection() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch("/api/analytics");
+        const json = await res.json();
+        setData(json);
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="text-center py-12 text-stone-500">
+        Failed to load analytics
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <h1 className="text-2xl font-semibold text-stone-900">Analytics</h1>
+
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Eye className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.totalViews.toLocaleString()}</p>
+              <p className="text-sm text-stone-500">Total Views</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <ImageIcon className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.publishedPhotos}</p>
+              <p className="text-sm text-stone-500">Published Photos</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <FileText className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.publishedArticles}</p>
+              <p className="text-sm text-stone-500">Published Articles</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-100 rounded-lg">
+              <Clock className="w-6 h-6 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.draftPhotos + data.overview.draftArticles}</p>
+              <p className="text-sm text-stone-500">Drafts</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Views Breakdown */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-stone-900 mb-4">Photo Views</h2>
+          <div className="flex items-end gap-4">
+            <span className="text-4xl font-semibold text-stone-900">{data.overview.photoViews.toLocaleString()}</span>
+            <span className="text-sm text-stone-500 mb-1">total views</span>
+          </div>
+          <div className="mt-4 h-2 bg-stone-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-green-500 rounded-full"
+              style={{ width: `${data.overview.totalViews > 0 ? (data.overview.photoViews / data.overview.totalViews) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+        <div className="bg-white rounded-lg p-6 shadow-sm">
+          <h2 className="text-lg font-medium text-stone-900 mb-4">Article Views</h2>
+          <div className="flex items-end gap-4">
+            <span className="text-4xl font-semibold text-stone-900">{data.overview.articleViews.toLocaleString()}</span>
+            <span className="text-sm text-stone-500 mb-1">total views</span>
+          </div>
+          <div className="mt-4 h-2 bg-stone-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-purple-500 rounded-full"
+              style={{ width: `${data.overview.totalViews > 0 ? (data.overview.articleViews / data.overview.totalViews) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Top Content */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Top Photos */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-stone-200">
+            <h2 className="text-lg font-medium text-stone-900">Top Photos</h2>
+          </div>
+          {data.topPhotos.length === 0 ? (
+            <div className="p-8 text-center text-stone-500">No data yet</div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {data.topPhotos.map((photo, index) => (
+                <div key={photo.id} className="flex items-center gap-4 p-4 hover:bg-stone-50">
+                  <span className="text-lg font-medium text-stone-400 w-6">{index + 1}</span>
+                  <div className="relative w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                    <Image src={photo.src} alt={photo.title} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-stone-900 truncate">{photo.title}</p>
+                    <p className="text-xs text-stone-500">{photo.category}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-stone-500">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm">{photo.viewCount.toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Top Articles */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-stone-200">
+            <h2 className="text-lg font-medium text-stone-900">Top Articles</h2>
+          </div>
+          {data.topArticles.length === 0 ? (
+            <div className="p-8 text-center text-stone-500">No data yet</div>
+          ) : (
+            <div className="divide-y divide-stone-100">
+              {data.topArticles.map((article, index) => (
+                <div key={article.id} className="flex items-center gap-4 p-4 hover:bg-stone-50">
+                  <span className="text-lg font-medium text-stone-400 w-6">{index + 1}</span>
+                  <div className="relative w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                    <Image src={article.cover} alt={article.title} fill className="object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-stone-900 truncate">{article.title}</p>
+                    <p className="text-xs text-stone-500">{article.category}</p>
+                  </div>
+                  <div className="flex items-center gap-1 text-stone-500">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-sm">{article.viewCount.toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Category Stats */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Photo Categories */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-stone-200">
+            <h2 className="text-lg font-medium text-stone-900">Photo Categories</h2>
+          </div>
+          {data.photoCategoryStats.length === 0 ? (
+            <div className="p-8 text-center text-stone-500">No data yet</div>
+          ) : (
+            <div className="p-4 space-y-3">
+              {data.photoCategoryStats.map((stat) => (
+                <div key={stat.category} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">{stat.category}</span>
+                    <span className="text-sm text-stone-500">{stat.count} photos</span>
+                  </div>
+                  <span className="text-sm font-medium text-stone-900">{stat.views.toLocaleString()} views</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Article Categories */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-stone-200">
+            <h2 className="text-lg font-medium text-stone-900">Article Categories</h2>
+          </div>
+          {data.articleCategoryStats.length === 0 ? (
+            <div className="p-8 text-center text-stone-500">No data yet</div>
+          ) : (
+            <div className="p-4 space-y-3">
+              {data.articleCategoryStats.map((stat) => (
+                <div key={stat.category} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">{stat.category}</span>
+                    <span className="text-sm text-stone-500">{stat.count} articles</span>
+                  </div>
+                  <span className="text-sm font-medium text-stone-900">{stat.views.toLocaleString()} views</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-lg p-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Last 30 Days</h2>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="text-center p-4 bg-stone-50 rounded-lg">
+            <p className="text-3xl font-semibold text-green-600">{data.overview.recentPhotos}</p>
+            <p className="text-sm text-stone-500 mt-1">New Photos Published</p>
+          </div>
+          <div className="text-center p-4 bg-stone-50 rounded-lg">
+            <p className="text-3xl font-semibold text-purple-600">{data.overview.recentArticles}</p>
+            <p className="text-sm text-stone-500 mt-1">New Articles Published</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -667,9 +1013,834 @@ function ArticleTagsManager() {
 }
 
 // ============================================
+// Profile Manager Component
+// ============================================
+interface ProfileData {
+  name: string;
+  title: string;
+  bio: string;
+  avatar: string;
+  email: string;
+  location: string;
+  socialLinks: {
+    instagram: string;
+    twitter: string;
+    youtube: string;
+    website: string;
+  };
+  equipment: {
+    cameras: string[];
+    lenses: string[];
+    accessories: string[];
+  };
+  philosophy: string;
+  services: string[];
+}
+
+function ProfileManager() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [profile, setProfile] = useState<ProfileData>({
+    name: "",
+    title: "",
+    bio: "",
+    avatar: "",
+    email: "",
+    location: "",
+    socialLinks: { instagram: "", twitter: "", youtube: "", website: "" },
+    equipment: { cameras: [], lenses: [], accessories: [] },
+    philosophy: "",
+    services: [],
+  });
+  const [newEquipment, setNewEquipment] = useState({ cameras: "", lenses: "", accessories: "" });
+  const [newService, setNewService] = useState("");
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/settings/profile");
+        const data = await res.json();
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/settings/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      });
+      if (res.ok) {
+        alert("Profile saved successfully!");
+      } else {
+        alert("Failed to save profile");
+      }
+    } catch {
+      alert("Failed to save profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "avatar");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProfile({ ...profile, avatar: data.url });
+      } else {
+        alert("Failed to upload avatar");
+      }
+    } catch {
+      alert("Failed to upload avatar");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const addEquipment = (type: "cameras" | "lenses" | "accessories") => {
+    const value = newEquipment[type].trim();
+    if (!value) return;
+    setProfile({
+      ...profile,
+      equipment: {
+        ...profile.equipment,
+        [type]: [...profile.equipment[type], value],
+      },
+    });
+    setNewEquipment({ ...newEquipment, [type]: "" });
+  };
+
+  const removeEquipment = (type: "cameras" | "lenses" | "accessories", index: number) => {
+    setProfile({
+      ...profile,
+      equipment: {
+        ...profile.equipment,
+        [type]: profile.equipment[type].filter((_, i) => i !== index),
+      },
+    });
+  };
+
+  const addService = () => {
+    const value = newService.trim();
+    if (!value) return;
+    setProfile({
+      ...profile,
+      services: [...profile.services, value],
+    });
+    setNewService("");
+  };
+
+  const removeService = (index: number) => {
+    setProfile({
+      ...profile,
+      services: profile.services.filter((_, i) => i !== index),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl">
+      {/* Avatar Section */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Profile Photo</h2>
+        <div className="flex items-center gap-6">
+          <div className="relative w-24 h-24 rounded-full overflow-hidden bg-stone-200">
+            {profile.avatar ? (
+              <Image src={profile.avatar} alt="Avatar" fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <User className="w-12 h-12 text-stone-400" />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800 cursor-pointer transition-colors">
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload Photo
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="hidden"
+                disabled={isUploading}
+              />
+            </label>
+            <p className="text-xs text-stone-500 mt-2">Recommended: Square image, at least 200x200px</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Basic Info */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Basic Information</h2>
+        <div className="grid gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Display Name *</label>
+              <input
+                type="text"
+                value={profile.name}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="WeiChieh"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Title *</label>
+              <input
+                type="text"
+                value={profile.title}
+                onChange={(e) => setProfile({ ...profile, title: e.target.value })}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="Photographer & Writer"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Bio</label>
+            <textarea
+              value={profile.bio}
+              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 resize-none"
+              placeholder="Tell visitors about yourself..."
+            />
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Email</label>
+              <input
+                type="email"
+                value={profile.email}
+                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="hello@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Location</label>
+              <input
+                type="text"
+                value={profile.location}
+                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="Taiwan"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Social Links */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Social Links</h2>
+        <div className="grid gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Instagram</label>
+              <input
+                type="url"
+                value={profile.socialLinks.instagram}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    socialLinks: { ...profile.socialLinks, instagram: e.target.value },
+                  })
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="https://instagram.com/username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Twitter / X</label>
+              <input
+                type="url"
+                value={profile.socialLinks.twitter}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    socialLinks: { ...profile.socialLinks, twitter: e.target.value },
+                  })
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="https://twitter.com/username"
+              />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">YouTube</label>
+              <input
+                type="url"
+                value={profile.socialLinks.youtube}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    socialLinks: { ...profile.socialLinks, youtube: e.target.value },
+                  })
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="https://youtube.com/@channel"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-1">Website</label>
+              <input
+                type="url"
+                value={profile.socialLinks.website}
+                onChange={(e) =>
+                  setProfile({
+                    ...profile,
+                    socialLinks: { ...profile.socialLinks, website: e.target.value },
+                  })
+                }
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="https://yourwebsite.com"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Philosophy */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Photography Philosophy</h2>
+        <textarea
+          value={profile.philosophy}
+          onChange={(e) => setProfile({ ...profile, philosophy: e.target.value })}
+          rows={4}
+          className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 resize-none"
+          placeholder="Share your photography philosophy and approach..."
+        />
+      </div>
+
+      {/* Equipment */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Equipment</h2>
+        <div className="space-y-6">
+          {/* Cameras */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Cameras</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newEquipment.cameras}
+                onChange={(e) => setNewEquipment({ ...newEquipment, cameras: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && addEquipment("cameras")}
+                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="e.g., Sony A7R V"
+              />
+              <button
+                onClick={() => addEquipment("cameras")}
+                className="px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {profile.equipment.cameras.map((item, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 text-sm rounded-full"
+                >
+                  {item}
+                  <button onClick={() => removeEquipment("cameras", i)} className="text-stone-400 hover:text-stone-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Lenses */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Lenses</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newEquipment.lenses}
+                onChange={(e) => setNewEquipment({ ...newEquipment, lenses: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && addEquipment("lenses")}
+                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="e.g., Sony 24-70mm f/2.8 GM"
+              />
+              <button
+                onClick={() => addEquipment("lenses")}
+                className="px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {profile.equipment.lenses.map((item, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 text-sm rounded-full"
+                >
+                  {item}
+                  <button onClick={() => removeEquipment("lenses", i)} className="text-stone-400 hover:text-stone-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Accessories */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Accessories</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newEquipment.accessories}
+                onChange={(e) => setNewEquipment({ ...newEquipment, accessories: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && addEquipment("accessories")}
+                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="e.g., Peak Design Tripod"
+              />
+              <button
+                onClick={() => addEquipment("accessories")}
+                className="px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {profile.equipment.accessories.map((item, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 text-sm rounded-full"
+                >
+                  {item}
+                  <button onClick={() => removeEquipment("accessories", i)} className="text-stone-400 hover:text-stone-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Services */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Services</h2>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={newService}
+            onChange={(e) => setNewService(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addService()}
+            className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+            placeholder="e.g., Portrait Photography"
+          />
+          <button
+            onClick={addService}
+            className="px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800"
+          >
+            Add
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {profile.services.map((service, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 text-sm rounded-full"
+            >
+              {service}
+              <button onClick={() => removeService(i)} className="text-stone-400 hover:text-stone-600">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-lg hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4" />
+              Save Profile
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// SEO Manager Component
+// ============================================
+interface SEOData {
+  siteTitle: string;
+  siteDescription: string;
+  siteKeywords: string[];
+  ogImage: string;
+  twitterHandle: string;
+  googleAnalyticsId: string;
+  googleSearchConsoleId: string;
+  facebookPixelId: string;
+}
+
+function SEOManager() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [seo, setSeo] = useState<SEOData>({
+    siteTitle: "",
+    siteDescription: "",
+    siteKeywords: [],
+    ogImage: "",
+    twitterHandle: "",
+    googleAnalyticsId: "",
+    googleSearchConsoleId: "",
+    facebookPixelId: "",
+  });
+  const [newKeyword, setNewKeyword] = useState("");
+
+  useEffect(() => {
+    const fetchSEO = async () => {
+      try {
+        const res = await fetch("/api/settings/seo");
+        const data = await res.json();
+        setSeo(data);
+      } catch (error) {
+        console.error("Failed to fetch SEO settings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSEO();
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/settings/seo", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(seo),
+      });
+      if (res.ok) {
+        alert("SEO settings saved successfully!");
+      } else {
+        alert("Failed to save SEO settings");
+      }
+    } catch {
+      alert("Failed to save SEO settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "og-image");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSeo({ ...seo, ogImage: data.url });
+      } else {
+        alert("Failed to upload image");
+      }
+    } catch {
+      alert("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const addKeyword = () => {
+    const value = newKeyword.trim().toLowerCase();
+    if (!value || seo.siteKeywords.includes(value)) return;
+    setSeo({ ...seo, siteKeywords: [...seo.siteKeywords, value] });
+    setNewKeyword("");
+  };
+
+  const removeKeyword = (index: number) => {
+    setSeo({ ...seo, siteKeywords: seo.siteKeywords.filter((_, i) => i !== index) });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl">
+      {/* Basic SEO */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Basic SEO</h2>
+        <div className="grid gap-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Site Title</label>
+            <input
+              type="text"
+              value={seo.siteTitle}
+              onChange={(e) => setSeo({ ...seo, siteTitle: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="WeiChieh Photography"
+            />
+            <p className="text-xs text-stone-400 mt-1">Appears in browser tab and search results</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Site Description</label>
+            <textarea
+              value={seo.siteDescription}
+              onChange={(e) => setSeo({ ...seo, siteDescription: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 resize-none"
+              placeholder="A photography blog capturing moments and stories..."
+            />
+            <p className="text-xs text-stone-400 mt-1">Recommended: 150-160 characters for search results</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Keywords</label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newKeyword}
+                onChange={(e) => setNewKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addKeyword())}
+                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                placeholder="Add keyword..."
+              />
+              <button
+                onClick={addKeyword}
+                className="px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {seo.siteKeywords.map((keyword, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-stone-100 text-stone-700 text-sm rounded-full"
+                >
+                  {keyword}
+                  <button onClick={() => removeKeyword(i)} className="text-stone-400 hover:text-stone-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Open Graph */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Social Sharing (Open Graph)</h2>
+        <div className="grid gap-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2">Default Share Image</label>
+            <div className="flex items-start gap-4">
+              <div className="relative w-48 h-24 rounded-lg overflow-hidden bg-stone-200 flex-shrink-0">
+                {seo.ogImage ? (
+                  <Image src={seo.ogImage} alt="OG Image" fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-stone-400" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-lg hover:bg-stone-800 cursor-pointer transition-colors">
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Upload Image
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleOgImageUpload}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+                <p className="text-xs text-stone-400 mt-2">Recommended: 1200x630px for best display</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Twitter Handle</label>
+            <input
+              type="text"
+              value={seo.twitterHandle}
+              onChange={(e) => setSeo({ ...seo, twitterHandle: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="@username"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics & Tracking */}
+      <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-medium text-stone-900 mb-4">Analytics & Tracking</h2>
+        <div className="grid gap-4">
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Google Analytics ID</label>
+            <input
+              type="text"
+              value={seo.googleAnalyticsId}
+              onChange={(e) => setSeo({ ...seo, googleAnalyticsId: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="G-XXXXXXXXXX"
+            />
+            <p className="text-xs text-stone-400 mt-1">Google Analytics 4 Measurement ID</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Google Search Console</label>
+            <input
+              type="text"
+              value={seo.googleSearchConsoleId}
+              onChange={(e) => setSeo({ ...seo, googleSearchConsoleId: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="Verification code or meta tag content"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-1">Facebook Pixel ID</label>
+            <input
+              type="text"
+              value={seo.facebookPixelId}
+              onChange={(e) => setSeo({ ...seo, facebookPixelId: e.target.value })}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+              placeholder="123456789012345"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-stone-900 text-white rounded-lg hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4" />
+              Save SEO Settings
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // Photos Section
 // ============================================
-function PhotosSection() {
+interface PhotosSectionProps {
+  activeTab: PhotoTab;
+}
+
+function PhotosSection({ activeTab }: PhotosSectionProps) {
+  // Show category or tag manager based on tab
+  if (activeTab === "categories") {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-6">Photo Categories</h1>
+        <PhotoCategoriesManager />
+      </div>
+    );
+  }
+
+  if (activeTab === "tags") {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-6">Photo Tags</h1>
+        <PhotoTagsManager />
+      </div>
+    );
+  }
+
+  // Default: Photo list
+  return <PhotoListContent />;
+}
+
+function PhotoListContent() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [tags, setTags] = useState<PhotoTag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -680,6 +1851,8 @@ function PhotosSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -761,6 +1934,68 @@ function PhotosSection() {
     ? ["All", ...categories.map((c) => c.name)]
     : ["All", "Portrait", "Landscape", "Street", "Nature"];
 
+  // Bulk selection handlers
+  const toggleSelect = (id: number) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === photos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(photos.map((p) => p.id)));
+    }
+  };
+
+  const handleBulkStatusChange = async (status: "draft" | "scheduled" | "published") => {
+    if (selectedIds.size === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) => {
+        const photo = photos.find((p) => p.id === id);
+        if (!photo) return Promise.resolve();
+        return fetch(`/api/photos/${photo.slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+      });
+      await Promise.all(promises);
+      fetchPhotos();
+      setSelectedIds(new Set());
+    } catch {
+      alert("Failed to update photos");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`確定要刪除 ${selectedIds.size} 張照片嗎？此操作無法復原。`)) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) => {
+        const photo = photos.find((p) => p.id === id);
+        if (!photo) return Promise.resolve();
+        return fetch(`/api/photos/${photo.slug}`, { method: "DELETE" });
+      });
+      await Promise.all(promises);
+      fetchPhotos();
+      setSelectedIds(new Set());
+    } catch {
+      alert("Failed to delete photos");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -830,6 +2065,45 @@ function PhotosSection() {
         )}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-stone-900 text-white rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm">{selectedIds.size} selected</span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-stone-400 hover:text-white"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkStatusChange(e.target.value as "draft" | "scheduled" | "published");
+                  e.target.value = "";
+                }
+              }}
+              disabled={isBulkUpdating}
+              className="px-3 py-1.5 bg-stone-800 border border-stone-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+            >
+              <option value="">Change Status...</option>
+              <option value="draft">Set as Draft</option>
+              <option value="published">Publish</option>
+            </select>
+            <button
+              onClick={handleBulkDelete}
+              disabled={isBulkUpdating}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50 flex items-center gap-1"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {isLoading ? (
@@ -841,6 +2115,14 @@ function PhotosSection() {
             <table className="w-full">
               <thead className="bg-stone-50 border-b border-stone-200">
                 <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === photos.length && photos.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Photo
                   </th>
@@ -866,7 +2148,15 @@ function PhotosSection() {
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {photos.map((photo) => (
-                  <tr key={photo.id} className="hover:bg-stone-50">
+                  <tr key={photo.id} className={`hover:bg-stone-50 ${selectedIds.has(photo.id) ? "bg-stone-50" : ""}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(photo.id)}
+                        onChange={() => toggleSelect(photo.id)}
+                        className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="relative w-16 h-12 rounded overflow-hidden">
                         <Image
@@ -2089,7 +3379,35 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
 // ============================================
 // Articles Section
 // ============================================
-function ArticlesSection() {
+interface ArticlesSectionProps {
+  activeTab: ArticleTab;
+}
+
+function ArticlesSection({ activeTab }: ArticlesSectionProps) {
+  // Show category or tag manager based on tab
+  if (activeTab === "categories") {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-6">Article Categories</h1>
+        <ArticleCategoriesManager />
+      </div>
+    );
+  }
+
+  if (activeTab === "tags") {
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold text-stone-900 mb-6">Article Tags</h1>
+        <ArticleTagsManager />
+      </div>
+    );
+  }
+
+  // Default: Article list
+  return <ArticleListContent />;
+}
+
+function ArticleListContent() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [tags, setTags] = useState<ArticleTag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -2099,6 +3417,8 @@ function ArticlesSection() {
   const [tagFilter, setTagFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -2180,6 +3500,68 @@ function ArticlesSection() {
     ? ["全部", ...categories.map((c) => c.name)]
     : ["全部", "技巧分享", "旅行日記", "攝影思考"];
 
+  // Bulk selection handlers
+  const toggleSelect = (id: number) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === articles.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(articles.map((a) => a.id)));
+    }
+  };
+
+  const handleBulkStatusChange = async (status: "draft" | "scheduled" | "published") => {
+    if (selectedIds.size === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) => {
+        const article = articles.find((a) => a.id === id);
+        if (!article) return Promise.resolve();
+        return fetch(`/api/articles/${article.slug}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+      });
+      await Promise.all(promises);
+      fetchArticles();
+      setSelectedIds(new Set());
+    } catch {
+      alert("Failed to update articles");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`確定要刪除 ${selectedIds.size} 篇文章嗎？此操作無法復原。`)) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = Array.from(selectedIds).map((id) => {
+        const article = articles.find((a) => a.id === id);
+        if (!article) return Promise.resolve();
+        return fetch(`/api/articles/${article.slug}`, { method: "DELETE" });
+      });
+      await Promise.all(promises);
+      fetchArticles();
+      setSelectedIds(new Set());
+    } catch {
+      alert("Failed to delete articles");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -2240,6 +3622,45 @@ function ArticlesSection() {
         )}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-stone-900 text-white rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm">{selectedIds.size} selected</span>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-stone-400 hover:text-white"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleBulkStatusChange(e.target.value as "draft" | "scheduled" | "published");
+                  e.target.value = "";
+                }
+              }}
+              disabled={isBulkUpdating}
+              className="px-3 py-1.5 bg-stone-800 border border-stone-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
+            >
+              <option value="">Change Status...</option>
+              <option value="draft">Set as Draft</option>
+              <option value="published">Publish</option>
+            </select>
+            <button
+              onClick={handleBulkDelete}
+              disabled={isBulkUpdating}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50 flex items-center gap-1"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {isLoading ? (
@@ -2251,6 +3672,14 @@ function ArticlesSection() {
             <table className="w-full">
               <thead className="bg-stone-50 border-b border-stone-200">
                 <tr>
+                  <th className="px-4 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === articles.length && articles.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Cover
                   </th>
@@ -2276,7 +3705,15 @@ function ArticlesSection() {
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {articles.map((article) => (
-                  <tr key={article.id} className="hover:bg-stone-50">
+                  <tr key={article.id} className={`hover:bg-stone-50 ${selectedIds.has(article.id) ? "bg-stone-50" : ""}`}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(article.id)}
+                        onChange={() => toggleSelect(article.id)}
+                        className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="relative w-20 h-12 rounded overflow-hidden">
                         <Image

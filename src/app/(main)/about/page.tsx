@@ -1,27 +1,101 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { Mail, Instagram, MapPin, Camera } from "lucide-react";
+import { Mail, Instagram, MapPin, Camera, Youtube, Globe, Twitter } from "lucide-react";
+import { useState, useEffect } from "react";
 
-export const metadata = {
-  title: "About | WeiChieh Photography",
-  description: "關於我的攝影故事與聯繫方式",
-};
+interface ProfileData {
+  name: string;
+  title: string;
+  bio: string;
+  avatar: string;
+  email: string;
+  location: string;
+  socialLinks: {
+    instagram: string;
+    twitter: string;
+    youtube: string;
+    website: string;
+  };
+  equipment: {
+    cameras: string[];
+    lenses: string[];
+    accessories: string[];
+  };
+  philosophy: string;
+  services: string[];
+}
 
 export default function AboutPage() {
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch("/api/settings/profile");
+        const data = await res.json();
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen pt-24 pb-16 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <main className="min-h-screen pt-24 pb-16 flex items-center justify-center">
+        <p className="text-stone-500">Failed to load profile</p>
+      </main>
+    );
+  }
+
+  // Combine all equipment items for display
+  const allEquipment = [
+    ...profile.equipment.cameras,
+    ...profile.equipment.lenses,
+    ...profile.equipment.accessories,
+  ];
+
+  // Extract Instagram username from URL if provided
+  const getInstagramUsername = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/instagram\.com\/([^/?]+)/);
+    return match ? `@${match[1]}` : url;
+  };
+
   return (
     <main className="min-h-screen pt-24 pb-16">
       {/* Hero Section */}
       <section className="max-w-4xl mx-auto px-4 md:px-6 mb-16">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           {/* Profile Image */}
-          <div className="relative aspect-[3/4] rounded-lg overflow-hidden film-grain">
-            <Image
-              src="/images/profile.jpg"
-              alt="WeiChieh"
-              fill
-              className="object-cover"
-              priority
-            />
+          <div className="relative aspect-[3/4] rounded-lg overflow-hidden film-grain bg-stone-200">
+            {profile.avatar ? (
+              <Image
+                src={profile.avatar}
+                alt={profile.name}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Camera className="w-16 h-16 text-stone-400" />
+              </div>
+            )}
             <div className="absolute inset-0 vignette" />
           </div>
 
@@ -29,24 +103,20 @@ export default function AboutPage() {
           <div className="space-y-6">
             <div>
               <p className="text-xs tracking-[0.3em] uppercase text-stone-400 font-light mb-2">
-                Photographer
+                {profile.title}
               </p>
               <h1 className="font-serif text-4xl md:text-5xl text-stone-800 font-light tracking-wide">
-                WeiChieh
+                {profile.name}
               </h1>
             </div>
 
-            <div className="space-y-4 text-stone-600 font-light leading-relaxed">
-              <p>
-                我是一位熱愛光影的攝影師，透過鏡頭捕捉生活中轉瞬即逝的美好瞬間。
-              </p>
-              <p>
-                攝影對我來說，不只是記錄，更是一種與世界對話的方式。每一張照片都承載著當下的情感與故事，我希望能透過影像，讓觀者也能感受到那份獨特的溫度。
-              </p>
-              <p>
-                特別鍾愛底片般的色調與自然光線，追求畫面中的寧靜與詩意。無論是人像、街拍還是風景，都希望能呈現出最真實、最動人的一面。
-              </p>
-            </div>
+            {profile.bio && (
+              <div className="space-y-4 text-stone-600 font-light leading-relaxed">
+                {profile.bio.split("\n").map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
+            )}
 
             {/* Stats */}
             <div className="flex gap-8 pt-4 border-t border-stone-200">
@@ -68,76 +138,94 @@ export default function AboutPage() {
       </section>
 
       {/* Philosophy Section */}
-      <section className="bg-stone-100/50 py-16 mb-16">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-stone-400 font-light mb-4">
-            Philosophy
-          </p>
-          <blockquote className="font-serif text-2xl md:text-3xl text-stone-700 font-light leading-relaxed italic">
-            &ldquo;每一張照片，都是一段時光的低語。&rdquo;
-          </blockquote>
-          <p className="mt-6 text-stone-500 font-light">
-            我相信最好的照片來自於真實的情感連結，而非刻意的擺拍。
-          </p>
-        </div>
-      </section>
+      {profile.philosophy && (
+        <section className="bg-stone-100/50 py-16 mb-16">
+          <div className="max-w-3xl mx-auto px-4 md:px-6 text-center">
+            <p className="text-xs tracking-[0.3em] uppercase text-stone-400 font-light mb-4">
+              Philosophy
+            </p>
+            <blockquote className="font-serif text-2xl md:text-3xl text-stone-700 font-light leading-relaxed italic">
+              &ldquo;{profile.philosophy}&rdquo;
+            </blockquote>
+          </div>
+        </section>
+      )}
 
       {/* Services & Equipment */}
-      <section className="max-w-4xl mx-auto px-4 md:px-6 mb-16">
-        <div className="grid md:grid-cols-2 gap-12">
-          {/* Services */}
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <Camera className="w-5 h-5 text-[#6b9e9a]" />
-              <h2 className="font-serif text-xl text-stone-700">服務項目</h2>
-            </div>
-            <ul className="space-y-3 text-stone-600 font-light">
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-[#6b9e9a] rounded-full" />
-                人像攝影 / Portrait
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-[#6b9e9a] rounded-full" />
-                活動紀錄 / Event
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-[#6b9e9a] rounded-full" />
-                商業攝影 / Commercial
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-[#6b9e9a] rounded-full" />
-                旅拍 / Travel Photography
-              </li>
-            </ul>
-          </div>
+      {(profile.services.length > 0 || allEquipment.length > 0) && (
+        <section className="max-w-4xl mx-auto px-4 md:px-6 mb-16">
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Services */}
+            {profile.services.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <Camera className="w-5 h-5 text-[#6b9e9a]" />
+                  <h2 className="font-serif text-xl text-stone-700">Services</h2>
+                </div>
+                <ul className="space-y-3 text-stone-600 font-light">
+                  {profile.services.map((service, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <span className="w-1.5 h-1.5 bg-[#6b9e9a] rounded-full" />
+                      {service}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          {/* Equipment */}
-          <div>
-            <div className="flex items-center gap-2 mb-6">
-              <Camera className="w-5 h-5 text-[#6b9e9a]" />
-              <h2 className="font-serif text-xl text-stone-700">使用器材</h2>
-            </div>
-            <ul className="space-y-3 text-stone-600 font-light">
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
-                Sony A7IV
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
-                Sony 85mm f/1.4 GM
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
-                Sony 35mm f/1.4 GM
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
-                Fujifilm X100V
-              </li>
-            </ul>
+            {/* Equipment */}
+            {allEquipment.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <Camera className="w-5 h-5 text-[#6b9e9a]" />
+                  <h2 className="font-serif text-xl text-stone-700">Equipment</h2>
+                </div>
+                <div className="space-y-4">
+                  {profile.equipment.cameras.length > 0 && (
+                    <div>
+                      <p className="text-xs text-stone-400 uppercase tracking-wider mb-2">Cameras</p>
+                      <ul className="space-y-2 text-stone-600 font-light">
+                        {profile.equipment.cameras.map((item, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {profile.equipment.lenses.length > 0 && (
+                    <div>
+                      <p className="text-xs text-stone-400 uppercase tracking-wider mb-2">Lenses</p>
+                      <ul className="space-y-2 text-stone-600 font-light">
+                        {profile.equipment.lenses.map((item, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {profile.equipment.accessories.length > 0 && (
+                    <div>
+                      <p className="text-xs text-stone-400 uppercase tracking-wider mb-2">Accessories</p>
+                      <ul className="space-y-2 text-stone-600 font-light">
+                        {profile.equipment.accessories.map((item, index) => (
+                          <li key={index} className="flex items-center gap-3">
+                            <span className="w-1.5 h-1.5 bg-stone-300 rounded-full" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Contact Section */}
       <section className="max-w-4xl mx-auto px-4 md:px-6">
@@ -146,50 +234,90 @@ export default function AboutPage() {
             Get In Touch
           </p>
           <h2 className="font-serif text-3xl md:text-4xl text-white font-light mb-4">
-            聯繫我
+            Contact
           </h2>
           <p className="text-stone-400 font-light mb-8 max-w-md mx-auto">
-            如果您有任何合作提案或攝影需求，歡迎透過以下方式與我聯繫。
+            If you have any collaboration proposals or photography needs, feel free to contact me.
           </p>
 
           {/* Contact Links */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <a
-              href="mailto:hello@weichieh.com"
-              className="flex items-center gap-2 px-6 py-3 bg-white text-stone-900 rounded-full hover:bg-stone-100 transition-colors duration-300"
-            >
-              <Mail className="w-4 h-4" />
-              <span className="text-sm font-light">hello@weichieh.com</span>
-            </a>
-            <a
-              href="https://instagram.com/weichieh"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-6 py-3 border border-stone-700 text-white rounded-full hover:border-stone-500 hover:bg-stone-800 transition-colors duration-300"
-            >
-              <Instagram className="w-4 h-4" />
-              <span className="text-sm font-light">@weichieh</span>
-            </a>
+            {profile.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                className="flex items-center gap-2 px-6 py-3 bg-white text-stone-900 rounded-full hover:bg-stone-100 transition-colors duration-300"
+              >
+                <Mail className="w-4 h-4" />
+                <span className="text-sm font-light">{profile.email}</span>
+              </a>
+            )}
+            {profile.socialLinks.instagram && (
+              <a
+                href={profile.socialLinks.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-6 py-3 border border-stone-700 text-white rounded-full hover:border-stone-500 hover:bg-stone-800 transition-colors duration-300"
+              >
+                <Instagram className="w-4 h-4" />
+                <span className="text-sm font-light">{getInstagramUsername(profile.socialLinks.instagram)}</span>
+              </a>
+            )}
+          </div>
+
+          {/* Other Social Links */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            {profile.socialLinks.twitter && (
+              <a
+                href={profile.socialLinks.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-stone-700 flex items-center justify-center text-stone-400 hover:text-white hover:border-stone-500 transition-colors"
+              >
+                <Twitter className="w-4 h-4" />
+              </a>
+            )}
+            {profile.socialLinks.youtube && (
+              <a
+                href={profile.socialLinks.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-stone-700 flex items-center justify-center text-stone-400 hover:text-white hover:border-stone-500 transition-colors"
+              >
+                <Youtube className="w-4 h-4" />
+              </a>
+            )}
+            {profile.socialLinks.website && (
+              <a
+                href={profile.socialLinks.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border border-stone-700 flex items-center justify-center text-stone-400 hover:text-white hover:border-stone-500 transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+              </a>
+            )}
           </div>
 
           {/* Location */}
-          <div className="flex items-center justify-center gap-2 text-stone-500">
-            <MapPin className="w-4 h-4" />
-            <span className="text-sm font-light">Based in Taipei, Taiwan</span>
-          </div>
+          {profile.location && (
+            <div className="flex items-center justify-center gap-2 text-stone-500">
+              <MapPin className="w-4 h-4" />
+              <span className="text-sm font-light">Based in {profile.location}</span>
+            </div>
+          )}
         </div>
       </section>
 
       {/* CTA */}
       <section className="max-w-4xl mx-auto px-4 md:px-6 mt-16 text-center">
         <p className="text-stone-500 font-light mb-4">
-          想看更多作品？
+          Want to see more work?
         </p>
         <Link
           href="/"
           className="inline-block px-8 py-3 border border-stone-300 text-stone-700 rounded-full hover:border-stone-500 hover:bg-stone-50 transition-colors duration-500 text-sm tracking-wider uppercase font-light"
         >
-          瀏覽作品集
+          View Portfolio
         </Link>
       </section>
     </main>

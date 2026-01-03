@@ -65,6 +65,13 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         const data = await res.json();
         setPhoto(data);
 
+        // Track view
+        fetch("/api/analytics/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "photo", slug }),
+        }).catch(() => {/* ignore tracking errors */});
+
         // Fetch all photos for navigation and related
         const allRes = await fetch("/api/photos?limit=100");
         const allData = await allRes.json();

@@ -74,6 +74,13 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
         const data = await res.json();
         setArticle(data);
 
+        // Track view
+        fetch("/api/analytics/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "article", slug }),
+        }).catch(() => {/* ignore tracking errors */});
+
         // Fetch all articles for navigation
         const allRes = await fetch("/api/articles?limit=50");
         const allData = await allRes.json();
