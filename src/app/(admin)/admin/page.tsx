@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useUpload } from "@/hooks/useUpload";
+import MarkdownContent from "@/components/MarkdownContent";
 import {
   Plus,
   Search,
@@ -2397,6 +2398,11 @@ function ArticleModal({ article, tags, categories, onClose, onSuccess }: Article
   );
   const [newTagName, setNewTagName] = useState("");
   const [localTags, setLocalTags] = useState<ArticleTag[]>(tags);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const contentTextareaRef = { current: null as HTMLTextAreaElement | null };
 
   // 合併資料庫分類和預設分類
   const allCategories = categories.length > 0
@@ -2464,6 +2470,176 @@ function ArticleModal({ article, tags, categories, onClose, onSuccess }: Article
     } catch {
       console.error("Failed to add tag");
     }
+  };
+
+  // AI 生成文章
+  const handleGenerateArticle = async () => {
+    const imageUrl = coverPreview?.startsWith("data:") ? null : coverPreview;
+    if (!imageUrl && !formData.cover) {
+      setError("請先上傳封面圖片才能使用 AI 生成");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      // 如果是新上傳的圖片，需要先上傳
+      let uploadedUrl = imageUrl;
+      if (formData.cover && !imageUrl) {
+        const { publicUrl } = await upload(formData.cover, "articles");
+        uploadedUrl = publicUrl;
+        setCoverPreview(publicUrl);
+      }
+
+      const res = await fetch("/api/ai/generate-article", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: uploadedUrl,
+          prompt: aiPrompt || undefined,
+          language: "zh",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "生成失敗");
+      }
+
+      const data = await res.json();
+
+      // 處理 AI 建議的 tags
+      const aiTagIds: number[] = [];
+      if (data.tags && Array.isArray(data.tags)) {
+        for (const tagName of data.tags) {
+          const existingTag = localTags.find(
+            (t) => t.name.toLowerCase() === tagName.toLowerCase()
+          );
+          if (existingTag) {
+            aiTagIds.push(existingTag.id);
+          } else {
+            try {
+              const tagRes = await fetch("/api/articles/tags", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: tagName }),
+              });
+              if (tagRes.ok) {
+                const newTag = await tagRes.json();
+                setLocalTags((prev) => [...prev, newTag]);
+                aiTagIds.push(newTag.id);
+              }
+            } catch {
+              console.error("Failed to create tag:", tagName);
+            }
+          }
+        }
+      }
+
+      // 生成 slug
+      const aiTitle = data.title || "";
+      const aiSlug = data.slug || "";
+      let generatedSlug = "";
+      if (aiSlug) {
+        generatedSlug = aiSlug + "-" + Date.now();
+      } else if (aiTitle) {
+        generatedSlug = aiTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .trim() + "-" + Date.now();
+      }
+
+      setFormData((prev) => {
+        const isNewOrDraft = !isEditMode || prev.content === "" || prev.excerpt === "";
+        const finalSlug = (isNewOrDraft && generatedSlug) ? generatedSlug : prev.slug;
+
+        return {
+          ...prev,
+          title: aiTitle || prev.title,
+          slug: finalSlug,
+          excerpt: data.excerpt || prev.excerpt,
+          content: data.content || prev.content,
+          category: data.category || prev.category,
+          tagIds: aiTagIds.length > 0 ? aiTagIds : prev.tagIds,
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI 生成失敗");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // 插入圖片到文章內容
+  const handleInsertImage = async (file: File) => {
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    setError(null);
+
+    try {
+      const { publicUrl } = await upload(file, "articles");
+
+      // 生成圖片的 alt 文字（使用檔名）
+      const altText = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
+
+      // 插入 Markdown 圖片語法
+      const imageMarkdown = `\n\n![${altText}](${publicUrl})\n\n`;
+
+      // 在游標位置插入，或者在末尾追加
+      const textarea = contentTextareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newContent =
+          formData.content.substring(0, start) +
+          imageMarkdown +
+          formData.content.substring(end);
+        setFormData({ ...formData, content: newContent });
+
+        // 設定游標位置到圖片後面
+        setTimeout(() => {
+          textarea.focus();
+          textarea.selectionStart = textarea.selectionEnd = start + imageMarkdown.length;
+        }, 0);
+      } else {
+        // 如果沒有 textarea ref，直接追加到末尾
+        setFormData({ ...formData, content: formData.content + imageMarkdown });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "圖片上傳失敗");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // 插入 Markdown 格式
+  const insertMarkdown = (before: string, after: string = "") => {
+    const textarea = contentTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+    const newContent =
+      formData.content.substring(0, start) +
+      before + selectedText + after +
+      formData.content.substring(end);
+
+    setFormData({ ...formData, content: newContent });
+
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        textarea.selectionStart = start + before.length;
+        textarea.selectionEnd = start + before.length + selectedText.length;
+      } else {
+        textarea.selectionStart = textarea.selectionEnd = start + before.length;
+      }
+    }, 0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -2543,6 +2719,46 @@ function ArticleModal({ article, tags, categories, onClose, onSuccess }: Article
               {error}
             </div>
           )}
+
+          {/* AI Auto-fill Section */}
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-stone-700 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  AI 智慧生成
+                </h3>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  上傳封面圖後，自動生成標題、摘要、分類、Tags 和完整文章
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateArticle}
+                disabled={isGenerating || (!coverPreview && !formData.cover)}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    AI 生成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    開始生成
+                  </>
+                )}
+              </button>
+            </div>
+            <input
+              type="text"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="可選：輸入額外提示（如：這是一篇關於黃金時刻攝影技巧的文章、偏向教學風格等）"
+              className="w-full px-3 py-2 border border-purple-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -2769,21 +2985,150 @@ function ArticleModal({ article, tags, categories, onClose, onSuccess }: Article
             />
           </div>
 
-          {/* Content */}
+          {/* Content with Markdown Preview */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Content (Markdown) *
-            </label>
-            <textarea
-              value={formData.content}
-              onChange={(e) =>
-                setFormData({ ...formData, content: e.target.value })
-              }
-              rows={10}
-              className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 font-mono text-sm"
-              placeholder="## Heading&#10;&#10;Your content here..."
-              required
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-stone-700">
+                Content (Markdown) *
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPreview(!showPreview)}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs rounded-full transition-colors ${
+                  showPreview
+                    ? "bg-blue-500 text-white"
+                    : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+                }`}
+              >
+                <Eye className="w-3 h-3" />
+                {showPreview ? "隱藏預覽" : "顯示預覽"}
+              </button>
+            </div>
+
+            {/* Editor Toolbar */}
+            <div className="flex items-center gap-1 mb-2 p-2 bg-stone-50 rounded-t-md border border-b-0 border-stone-300">
+              <button
+                type="button"
+                onClick={() => insertMarkdown("## ", "")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs font-bold"
+                title="標題"
+              >
+                H2
+              </button>
+              <button
+                type="button"
+                onClick={() => insertMarkdown("### ", "")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs font-bold"
+                title="小標題"
+              >
+                H3
+              </button>
+              <div className="w-px h-4 bg-stone-300 mx-1" />
+              <button
+                type="button"
+                onClick={() => insertMarkdown("**", "**")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs font-bold"
+                title="粗體"
+              >
+                B
+              </button>
+              <button
+                type="button"
+                onClick={() => insertMarkdown("*", "*")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs italic"
+                title="斜體"
+              >
+                I
+              </button>
+              <div className="w-px h-4 bg-stone-300 mx-1" />
+              <button
+                type="button"
+                onClick={() => insertMarkdown("- ", "")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs"
+                title="列表"
+              >
+                • List
+              </button>
+              <button
+                type="button"
+                onClick={() => insertMarkdown("> ", "")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs"
+                title="引用"
+              >
+                &ldquo; Quote
+              </button>
+              <div className="w-px h-4 bg-stone-300 mx-1" />
+              <button
+                type="button"
+                onClick={() => insertMarkdown("[", "](url)")}
+                className="p-1.5 text-stone-600 hover:bg-stone-200 rounded text-xs"
+                title="連結"
+              >
+                🔗 Link
+              </button>
+              <div className="w-px h-4 bg-stone-300 mx-1" />
+              {/* Image Upload */}
+              <label
+                className={`flex items-center gap-1 px-2 py-1 text-xs rounded cursor-pointer transition-colors ${
+                  isUploadingImage
+                    ? "bg-stone-300 text-stone-500"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                }`}
+                title="插入圖片"
+              >
+                {isUploadingImage ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    上傳中...
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="w-3 h-3" />
+                    插入圖片
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleInsertImage(file);
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                  disabled={isUploadingImage}
+                />
+              </label>
+            </div>
+
+            <div className={`grid gap-4 ${showPreview ? "md:grid-cols-2" : "grid-cols-1"}`}>
+              {/* Editor */}
+              <div>
+                <textarea
+                  ref={(el) => { contentTextareaRef.current = el; }}
+                  value={formData.content}
+                  onChange={(e) =>
+                    setFormData({ ...formData, content: e.target.value })
+                  }
+                  rows={showPreview ? 20 : 10}
+                  className="w-full px-3 py-2 border border-stone-300 rounded-md rounded-t-none focus:outline-none focus:ring-2 focus:ring-stone-500 font-mono text-sm resize-none"
+                  placeholder="## 標題&#10;&#10;在這裡撰寫文章內容...&#10;&#10;### 小標題&#10;&#10;- 列表項目 1&#10;- 列表項目 2&#10;&#10;> 引用文字"
+                  required
+                />
+              </div>
+              {/* Preview */}
+              {showPreview && (
+                <div className="border border-stone-200 rounded-md p-4 bg-white overflow-y-auto max-h-[480px]">
+                  <div className="prose prose-stone prose-sm max-w-none markdown-preview">
+                    {formData.content ? (
+                      <MarkdownContent content={formData.content} />
+                    ) : (
+                      <p className="text-stone-400 italic">預覽會顯示在這裡...</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Publish Settings */}

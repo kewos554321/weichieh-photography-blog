@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { notFound } from "next/navigation";
+import MarkdownContent from "@/components/MarkdownContent";
 
 interface ArticleTag {
   id: number;
@@ -222,29 +223,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
 
             {/* Article Body */}
             <div className="prose prose-stone prose-lg max-w-none">
-              {article.content.split("\n\n").map((paragraph, index) => {
-                if (paragraph.startsWith("## ")) {
-                  const title = paragraph.replace("## ", "");
-                  const id = title.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, "-");
-                  return (
-                    <h2
-                      key={index}
-                      id={id}
-                      className="font-serif text-xl md:text-2xl mt-12 mb-6 text-stone-700 scroll-mt-24"
-                    >
-                      {title}
-                    </h2>
-                  );
-                }
-                if (paragraph.trim()) {
-                  return (
-                    <p key={index} className="text-stone-600 leading-relaxed mb-6">
-                      {paragraph}
-                    </p>
-                  );
-                }
-                return null;
-              })}
+              <MarkdownContent content={article.content} />
             </div>
 
             {/* Tags */}
