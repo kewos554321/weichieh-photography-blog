@@ -30,7 +30,7 @@ export default function MapPickerModal({
     : [25.033, 121.565]; // Default: Taipei
 
   useEffect(() => {
-    let map: L.Map | null = null;
+    let isMounted = true;
 
     const initMap = async () => {
       // Dynamically import Leaflet
@@ -54,10 +54,16 @@ export default function MapPickerModal({
         shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       });
 
-      if (!mapContainerRef.current) return;
+      if (!mapContainerRef.current || !isMounted) return;
+
+      // Check if map already exists and clean it up
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
 
       // Create map
-      map = L.map(mapContainerRef.current).setView(defaultCenter, latitude && longitude ? 12 : 5);
+      const map = L.map(mapContainerRef.current).setView(defaultCenter, latitude && longitude ? 12 : 5);
       mapInstanceRef.current = map;
 
       // Add tile layer with soft style
@@ -89,8 +95,13 @@ export default function MapPickerModal({
     initMap();
 
     return () => {
-      if (map) {
-        map.remove();
+      isMounted = false;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      if (markerRef.current) {
+        markerRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
