@@ -12,9 +12,10 @@ import {
   List,
   Globe,
   BarChart3,
+  FolderOpen,
 } from "lucide-react";
 
-type Section = "photos" | "articles" | "analytics" | "settings";
+type Section = "photos" | "articles" | "media" | "analytics" | "settings";
 
 interface SubNavItem {
   label: string;
@@ -52,6 +53,12 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    section: "media",
+    label: "Media",
+    icon: FolderOpen,
+    href: "/admin/media",
+  },
+  {
     section: "analytics",
     label: "Analytics",
     icon: BarChart3,
@@ -75,6 +82,7 @@ export function AdminSidebar() {
   const getActiveSection = (): Section | null => {
     if (pathname.startsWith("/admin/photos")) return "photos";
     if (pathname.startsWith("/admin/articles")) return "articles";
+    if (pathname.startsWith("/admin/media")) return "media";
     if (pathname.startsWith("/admin/analytics")) return "analytics";
     if (pathname.startsWith("/admin/settings")) return "settings";
     return null;

@@ -4,6 +4,53 @@ export interface PhotoTag {
   _count?: { photos: number };
 }
 
+export interface MediaTag {
+  id: number;
+  name: string;
+  _count?: { media: number };
+}
+
+export interface Media {
+  id: number;
+  filename: string;
+  url: string;
+  key: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
+  alt: string | null;
+  tags: MediaTag[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaWithUsage extends Media {
+  usage: {
+    photos: Array<{ id: number; slug: string; title: string }>;
+    articles: Array<{ id: number; slug: string; title: string }>;
+  };
+}
+
+export interface MediaListResponse {
+  media: Media[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export type FilterType = "none" | "bw" | "vintage" | "cinematic" | "warm" | "cool";
+
+export interface ImageEdits {
+  crop?: { x: number; y: number; width: number; height: number };
+  rotation?: number;
+  brightness?: number;
+  contrast?: number;
+  saturation?: number;
+  filter?: FilterType;
+}
+
 export interface ArticleTag {
   id: number;
   name: string;

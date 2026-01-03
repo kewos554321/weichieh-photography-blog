@@ -27,6 +27,8 @@ export default defineConfig({
         "src/components/MapPickerModal.tsx",
         // Exclude admin components - complex UI tested via E2E instead
         "src/components/admin/**/*.{ts,tsx}",
+        // Exclude media API routes - tested via E2E instead
+        "src/app/api/media/**/*.ts",
       ],
       thresholds: {
         statements: 100,
