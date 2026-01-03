@@ -308,6 +308,61 @@ describe("Photos [slug] API", () => {
       );
     });
 
+    it("should update latitude and longitude when provided", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", latitude: 25.033, longitude: 121.565 };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { latitude: 25.033, longitude: 121.565 }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            latitude: 25.033,
+            longitude: 121.565,
+          }),
+        })
+      );
+    });
+
+    it("should update articleId when provided", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", articleId: 5 };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { articleId: 5 }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            articleId: 5,
+          }),
+        })
+      );
+    });
+
+    it("should clear articleId when set to null", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", articleId: null };
+      mockPrisma.photo.update.mockResolvedValue(mockPhoto);
+
+      await PUT(
+        createRequest("test-photo", "PUT", { articleId: null }),
+        createParams("test-photo")
+      );
+
+      expect(mockPrisma.photo.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            articleId: null,
+          }),
+        })
+      );
+    });
+
     it("should handle errors", async () => {
       mockPrisma.photo.update.mockRejectedValue(new Error("DB error"));
 

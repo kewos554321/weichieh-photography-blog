@@ -9,6 +9,8 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
+    aggregate: vi.fn(),
+    groupBy: vi.fn(),
   },
   article: {
     findMany: vi.fn(),
@@ -18,14 +20,40 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
+    aggregate: vi.fn(),
+    groupBy: vi.fn(),
   },
   photoTag: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   articleTag: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  photoCategory: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  articleCategory: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  siteSettings: {
+    findUnique: vi.fn(),
+    upsert: vi.fn(),
   },
 };
 

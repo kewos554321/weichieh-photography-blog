@@ -26,8 +26,8 @@ describe("Header", () => {
 
     expect(screen.getByText("Photos")).toBeInTheDocument();
     expect(screen.getByText("Blog")).toBeInTheDocument();
+    expect(screen.getByText("Map")).toBeInTheDocument();
     expect(screen.getByText("About")).toBeInTheDocument();
-    expect(screen.getByText("Contact")).toBeInTheDocument();
   });
 
   it("should have correct link hrefs", () => {
@@ -46,13 +46,13 @@ describe("Header", () => {
       "href",
       "/blog"
     );
+    expect(screen.getByRole("link", { name: "Map" })).toHaveAttribute(
+      "href",
+      "/map"
+    );
     expect(screen.getByRole("link", { name: "About" })).toHaveAttribute(
       "href",
       "/about"
-    );
-    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute(
-      "href",
-      "/contact"
     );
   });
 
@@ -96,12 +96,12 @@ describe("Header", () => {
     expect(aboutLink.className).toContain("text-[#6b9e9a]");
   });
 
-  it("should apply active styles on contact page", () => {
-    mockUsePathname.mockReturnValue("/contact");
+  it("should apply active styles on map page", () => {
+    mockUsePathname.mockReturnValue("/map");
     render(<Header />);
 
-    const contactLink = screen.getByText("Contact");
-    expect(contactLink.className).toContain("text-[#6b9e9a]");
+    const mapLink = screen.getByText("Map");
+    expect(mapLink.className).toContain("text-[#6b9e9a]");
   });
 
   it("should not apply active styles to photos when on blog", () => {

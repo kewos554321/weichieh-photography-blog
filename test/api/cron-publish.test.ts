@@ -6,7 +6,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }));
 
-import { GET } from "@/app/api/cron/publish/route";
+import { GET, POST } from "@/app/api/cron/publish/route";
 
 describe("Cron Publish API", () => {
   beforeEach(() => {
@@ -108,5 +108,52 @@ describe("Cron Publish API", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe("Failed to publish scheduled content");
+  });
+
+  describe("POST /api/cron/publish", () => {
+    it("should manually trigger publish and return message when content published", async () => {
+      mockPrisma.article.updateMany.mockResolvedValue({ count: 2 });
+      mockPrisma.photo.updateMany.mockResolvedValue({ count: 3 });
+
+      const request = new NextRequest("http://localhost/api/cron/publish", {
+        method: "POST",
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.publishedArticles).toBe(2);
+      expect(data.publishedPhotos).toBe(3);
+      expect(data.message).toBe("已發布 2 篇文章和 3 張照片");
+    });
+
+    it("should return no content message when nothing to publish", async () => {
+      mockPrisma.article.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
+
+      const request = new NextRequest("http://localhost/api/cron/publish", {
+        method: "POST",
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.message).toBe("目前沒有待發布的排程內容");
+    });
+
+    it("should handle POST errors", async () => {
+      mockPrisma.article.updateMany.mockRejectedValue(new Error("DB error"));
+
+      const request = new NextRequest("http://localhost/api/cron/publish", {
+        method: "POST",
+      });
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe("Failed to publish scheduled content");
+    });
   });
 });

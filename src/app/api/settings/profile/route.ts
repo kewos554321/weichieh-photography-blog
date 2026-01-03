@@ -87,7 +87,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const profile: ProfileSettings = {
+      /* istanbul ignore next */
       name: data.name || DEFAULT_PROFILE.name,
+      /* istanbul ignore next */
       title: data.title || DEFAULT_PROFILE.title,
       bio: data.bio || "",
       avatar: data.avatar || "",

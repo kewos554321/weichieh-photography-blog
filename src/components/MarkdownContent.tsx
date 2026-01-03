@@ -165,23 +165,22 @@ export default function MarkdownContent({ content, className = "" }: MarkdownCon
 
     // Image only block
     if (/^!\[.*\]\(.*\)$/.test(trimmed)) {
-      const match = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-      if (match) {
-        return (
-          <figure key={index} className="my-8">
-            <img
-              src={match[2]}
-              alt={match[1]}
-              className="max-w-full rounded-lg mx-auto"
-            />
-            {match[1] && (
-              <figcaption className="text-center text-sm text-stone-400 mt-3">
-                {match[1]}
-              </figcaption>
-            )}
-          </figure>
-        );
-      }
+      // Match is guaranteed by the test above, using non-null assertion
+      const match = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)!;
+      return (
+        <figure key={index} className="my-8">
+          <img
+            src={match[2]}
+            alt={match[1]}
+            className="max-w-full rounded-lg mx-auto"
+          />
+          {match[1] && (
+            <figcaption className="text-center text-sm text-stone-400 mt-3">
+              {match[1]}
+            </figcaption>
+          )}
+        </figure>
+      );
     }
 
     // Regular paragraph

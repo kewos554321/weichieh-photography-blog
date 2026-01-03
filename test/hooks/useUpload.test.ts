@@ -189,4 +189,143 @@ describe("useUpload", () => {
     expect(result.current.progress).toBe(0);
     expect(result.current.error).toBe(null);
   });
+
+  describe("uploadBatch", () => {
+    it("should return empty array for empty files", async () => {
+      const { result } = renderHook(() => useUpload());
+
+      let uploadResults: { filename: string; publicUrl: string; key: string }[];
+      await act(async () => {
+        uploadResults = await result.current.uploadBatch([]);
+      });
+
+      expect(uploadResults!).toEqual([]);
+    });
+
+    it("should upload multiple files successfully", async () => {
+      const mockBatchResponse = {
+        uploads: [
+          { presignedUrl: "https://r2.test.com/1", publicUrl: "https://r2.dev/1.jpg", key: "photos/1.jpg", filename: "1.jpg" },
+          { presignedUrl: "https://r2.test.com/2", publicUrl: "https://r2.dev/2.jpg", key: "photos/2.jpg", filename: "2.jpg" },
+        ],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBatchResponse),
+        })
+        .mockResolvedValue({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [
+        new File(["test1"], "1.jpg", { type: "image/jpeg" }),
+        new File(["test2"], "2.jpg", { type: "image/jpeg" }),
+      ];
+
+      let uploadResults: { filename: string; publicUrl: string; key: string }[];
+      await act(async () => {
+        uploadResults = await result.current.uploadBatch(files);
+      });
+
+      expect(uploadResults!).toHaveLength(2);
+      expect(uploadResults![0].publicUrl).toBe("https://r2.dev/1.jpg");
+      expect(uploadResults![1].publicUrl).toBe("https://r2.dev/2.jpg");
+      expect(result.current.progress).toBe(100);
+    });
+
+    it("should handle batch presign error", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: "Batch presign failed" }),
+      });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+
+      await act(async () => {
+        await expect(result.current.uploadBatch(files)).rejects.toThrow("Batch presign failed");
+      });
+
+      expect(result.current.error).toBe("Batch presign failed");
+    });
+
+    it("should handle batch presign error without message", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({}),
+      });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+
+      await act(async () => {
+        await expect(result.current.uploadBatch(files)).rejects.toThrow("Failed to get batch upload URLs");
+      });
+
+      expect(result.current.error).toBe("Failed to get batch upload URLs");
+    });
+
+    it("should handle individual file upload error in batch", async () => {
+      const mockBatchResponse = {
+        uploads: [
+          { presignedUrl: "https://r2.test.com/1", publicUrl: "https://r2.dev/1.jpg", key: "photos/1.jpg", filename: "1.jpg" },
+        ],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBatchResponse),
+        })
+        .mockResolvedValueOnce({ ok: false });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+
+      await act(async () => {
+        await expect(result.current.uploadBatch(files)).rejects.toThrow("Failed to upload test.jpg");
+      });
+
+      expect(result.current.error).toBe("Failed to upload test.jpg");
+    });
+
+    it("should call progress callback for batch uploads", async () => {
+      const mockBatchResponse = {
+        uploads: [
+          { presignedUrl: "https://r2.test.com/1", publicUrl: "https://r2.dev/1.jpg", key: "photos/1.jpg", filename: "1.jpg" },
+        ],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBatchResponse),
+        })
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+      const onProgress = vi.fn();
+
+      await act(async () => {
+        await result.current.uploadBatch(files, "photos", onProgress);
+      });
+
+      expect(onProgress).toHaveBeenCalledWith(1, 1, "test.jpg");
+    });
+
+    it("should handle non-Error exception in batch upload", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce("string error");
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+
+      await act(async () => {
+        await expect(result.current.uploadBatch(files)).rejects.toBe("string error");
+      });
+
+      expect(result.current.error).toBe("Batch upload failed");
+    });
+  });
 });

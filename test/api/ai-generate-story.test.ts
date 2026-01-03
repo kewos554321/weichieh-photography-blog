@@ -162,6 +162,36 @@ describe("AI Generate Story API", () => {
     expect(data.success).toBe(true);
   });
 
+  it("should include custom prompt in English", async () => {
+    const mockImageBuffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: () => Promise.resolve(mockImageBuffer),
+    });
+
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          title: "English Custom Title",
+          story: "English custom story",
+          category: "Portrait",
+          tags: [],
+        }),
+      },
+    });
+
+    const response = await POST(createRequest({
+      imageUrl: "https://example.com/image.jpg",
+      prompt: "focus on the lighting",
+      language: "en",
+    }));
+
+    expect(mockGenerateContent).toHaveBeenCalled();
+    const data = await response.json();
+    expect(data.success).toBe(true);
+  });
+
   it("should handle markdown code blocks in response", async () => {
     const mockImageBuffer = new ArrayBuffer(8);
     global.fetch = vi.fn().mockResolvedValue({
@@ -233,5 +263,124 @@ describe("AI Generate Story API", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe("Failed to generate story");
+  });
+
+  it("should use default content-type when not provided", async () => {
+    const mockImageBuffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({}), // No content-type
+      arrayBuffer: () => Promise.resolve(mockImageBuffer),
+    });
+
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          title: "Test",
+          story: "Story",
+          category: "Portrait",
+          tags: [],
+        }),
+      },
+    });
+
+    const response = await POST(createRequest({
+      imageUrl: "https://example.com/image.jpg",
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+
+  it("should include custom prompt in Chinese", async () => {
+    const mockImageBuffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: () => Promise.resolve(mockImageBuffer),
+    });
+
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          title: "中文標題",
+          story: "中文故事",
+          category: "Landscape",
+          tags: [],
+        }),
+      },
+    });
+
+    const response = await POST(createRequest({
+      imageUrl: "https://example.com/image.jpg",
+      prompt: "描述這張照片的氛圍",
+      language: "zh",
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.title).toBe("中文標題");
+  });
+
+  it("should use default prompt for English without custom prompt", async () => {
+    const mockImageBuffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: () => Promise.resolve(mockImageBuffer),
+    });
+
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          title: "English Title",
+          story: "English story",
+          category: "Street",
+          tags: ["street"],
+        }),
+      },
+    });
+
+    // No prompt, English language
+    const response = await POST(createRequest({
+      imageUrl: "https://example.com/image.jpg",
+      language: "en",
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+  });
+
+  it("should use defaults for missing fields in AI response", async () => {
+    const mockImageBuffer = new ArrayBuffer(8);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ "content-type": "image/jpeg" }),
+      arrayBuffer: () => Promise.resolve(mockImageBuffer),
+    });
+
+    // Return response with only title and slug
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify({
+          title: "Title Only",
+          slug: "title-only",
+        }),
+      },
+    });
+
+    const response = await POST(createRequest({
+      imageUrl: "https://example.com/image.jpg",
+    }));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.title).toBe("Title Only");
+    expect(data.story).toBe("");
+    expect(data.category).toBe("Portrait");
+    expect(data.tags).toEqual([]);
   });
 });
