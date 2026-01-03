@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, notFound } from "next/navigation";
+import { CommentForm, CommentList } from "@/components/comments";
+import { LikeButton } from "@/components/photo";
 
 interface PhotoTag {
   id: number;
@@ -43,8 +45,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
-  const [showImageHint, setShowImageHint] = useState(false);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [commentRefreshKey, setCommentRefreshKey] = useState(0);
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
@@ -100,17 +101,13 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   // Keyboard navigation
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      if (isLightboxOpen) {
-        setIsLightboxOpen(false);
-      } else {
-        router.push("/");
-      }
-    } else if (e.key === "ArrowLeft" && prevPhoto && !isLightboxOpen) {
+      router.push("/");
+    } else if (e.key === "ArrowLeft" && prevPhoto) {
       router.push(`/photo/${prevPhoto.slug}`);
-    } else if (e.key === "ArrowRight" && nextPhoto && !isLightboxOpen) {
+    } else if (e.key === "ArrowRight" && nextPhoto) {
       router.push(`/photo/${nextPhoto.slug}`);
     }
-  }, [prevPhoto, nextPhoto, router, isLightboxOpen]);
+  }, [prevPhoto, nextPhoto, router]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -160,12 +157,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
       <section className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           {/* Image */}
-          <div
-            className="relative aspect-[4/3] overflow-hidden rounded-sm group cursor-zoom-in"
-            onMouseEnter={() => setShowImageHint(true)}
-            onMouseLeave={() => setShowImageHint(false)}
-            onClick={() => setIsLightboxOpen(true)}
-          >
+          <div className="relative aspect-[4/3] overflow-hidden rounded-sm group">
             <Image
               src={photo.src}
               alt={photo.title}
@@ -178,15 +170,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
             {!isImageLoaded && (
               <div className="absolute inset-0 bg-stone-200 animate-pulse" />
             )}
-            {/* Hover hint */}
-            <div className={`absolute inset-0 bg-black/30 flex items-center justify-center transition-opacity duration-300 ${showImageHint ? "opacity-100" : "opacity-0"}`}>
-              <div className="flex items-center gap-2 text-white text-sm">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                </svg>
-                <span>View Full Size</span>
-              </div>
-            </div>
           </div>
 
           {/* Info */}
@@ -259,21 +242,24 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
               </div>
             )}
 
-            {/* Share Buttons */}
-            <div>
-              <p className="text-xs tracking-widest uppercase text-stone-400 mb-4">Share this photo</p>
-              <div className="flex gap-3">
-                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+            {/* Like & Share */}
+            <div className="flex items-center gap-6">
+              {/* Like Button */}
+              <LikeButton photoSlug={photo.slug} />
+
+              {/* Share Buttons */}
+              <div className="flex gap-2">
+                <button className="w-9 h-9 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
                   </svg>
                 </button>
-                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                <button className="w-9 h-9 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                   </svg>
                 </button>
-                <button className="w-10 h-10 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
+                <button className="w-9 h-9 rounded-full border border-stone-300 flex items-center justify-center text-stone-500 hover:border-[#6b9e9a] hover:text-[#6b9e9a] transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
@@ -337,6 +323,32 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         </section>
       )}
 
+      {/* Comments Section */}
+      <section className="border-t border-stone-200 bg-stone-50/30">
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 md:py-20">
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Comment Form */}
+            <div>
+              <h2 className="font-serif text-xl md:text-2xl text-stone-800 mb-6">
+                留下您的想法
+              </h2>
+              <CommentForm
+                photoId={photo.id}
+                onSuccess={() => setCommentRefreshKey((k) => k + 1)}
+              />
+            </div>
+
+            {/* Comment List */}
+            <div>
+              <CommentList
+                photoSlug={photo.slug}
+                refreshKey={commentRefreshKey}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Navigation */}
       <section className="border-t border-stone-200">
         <div className="max-w-7xl mx-auto">
@@ -386,45 +398,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         </div>
       </section>
 
-      {/* Lightbox Modal */}
-      {isLightboxOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center cursor-zoom-out"
-          onClick={() => setIsLightboxOpen(false)}
-        >
-          {/* Close button */}
-          <button
-            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-            onClick={() => setIsLightboxOpen(false)}
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Hint */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-sm flex items-center gap-4">
-            <span>Click anywhere or press</span>
-            <kbd className="px-2 py-0.5 bg-white/10 rounded text-white/70">Esc</kbd>
-            <span>to close</span>
-          </div>
-
-          {/* Full-size image */}
-          <div
-            className="relative w-[90vw] h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Image
-              src={photo.src}
-              alt={photo.title}
-              fill
-              className="object-contain"
-              sizes="90vw"
-              priority
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

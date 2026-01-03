@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Photo {
-  id             Int        @id @default(autoincrement())
-  slug           String     @unique
+  id             Int          @id @default(autoincrement())
+  slug           String       @unique
   title          String
   src            String
   category       String
@@ -19,18 +19,24 @@ model Photo {
   date           DateTime
   camera         String?
   lens           String?
-  story          String     @db.Text
-  behindTheScene String?    @db.Text
-  status         String     @default("published")
+  story          String       @db.Text
+  behindTheScene String?      @db.Text
+  status         String       @default("published")
   publishedAt    DateTime?
-  viewCount      Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  viewCount      Int          @default(0)
+  likeCount      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   tags           PhotoTag[]
 
   // 關聯文章（點擊「閱讀完整故事」）
   article   Article? @relation(fields: [articleId], references: [id])
   articleId Int?
+
+  // 相簿、留言、按讚
+  albums   AlbumPhoto[]
+  comments Comment[]
+  likes    Like[]
 
   @@index([category])
   @@index([date])
@@ -38,6 +44,7 @@ model Photo {
   @@index([publishedAt])
   @@index([articleId])
   @@index([viewCount])
+  @@index([likeCount])
 }
 
 model PhotoTag {
@@ -74,6 +81,9 @@ model Article {
 
   // 關聯照片（文章底部的照片集）
   photos Photo[]
+
+  // 留言
+  comments Comment[]
 
   @@index([category])
   @@index([date])
@@ -128,4 +138,76 @@ model MediaTag {
   name      String   @unique
   media     Media[]
   createdAt DateTime @default(now())
+}
+
+// ========== 相簿功能 ==========
+
+model Album {
+  id          Int          @id @default(autoincrement())
+  name        String
+  slug        String       @unique
+  description String?      @db.Text
+  coverUrl    String?
+  sortOrder   Int          @default(0)
+  isPublic    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  photos      AlbumPhoto[]
+
+  @@index([slug])
+  @@index([isPublic])
+  @@index([sortOrder])
+}
+
+model AlbumPhoto {
+  id        Int      @id @default(autoincrement())
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  albumId   Int
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   Int
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([albumId, photoId])
+  @@index([albumId])
+  @@index([photoId])
+}
+
+// ========== 留言功能 ==========
+
+model Comment {
+  id        Int           @id @default(autoincrement())
+  name      String
+  content   String        @db.Text
+  status    CommentStatus @default(PENDING)
+  photo     Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   Int?
+  article   Article?      @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId Int?
+  ipHash    String
+  createdAt DateTime      @default(now())
+
+  @@index([photoId])
+  @@index([articleId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ========== 按讚功能 ==========
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  photoId   Int
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  @@unique([photoId, ipHash])
+  @@index([photoId])
 }

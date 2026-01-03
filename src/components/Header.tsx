@@ -27,6 +27,12 @@ export default function Header() {
             Photos
           </Link>
           <Link
+            href="/albums"
+            className={isActive("/albums") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
+          >
+            Albums
+          </Link>
+          <Link
             href="/blog"
             className={isActive("/blog") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
           >

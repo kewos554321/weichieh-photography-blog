@@ -4,6 +4,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useState, useEffect, useRef } from "react";
 import { useUpload } from "@/hooks/useUpload";
+import { useExifExtraction } from "@/hooks/useExifExtraction";
 import type { Photo, PhotoTag, Category, Media } from "../types";
 import { MediaLibraryContent } from "../media/MediaLibraryContent";
 import {
@@ -50,6 +51,7 @@ interface ArticleOption {
 
 export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalProps) {
   const { upload, isUploading, progress } = useUpload();
+  const { extract: extractExif, isExtracting: isExtractingExif } = useExifExtraction();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(
@@ -111,13 +113,29 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
     setFormData({ ...formData, title, slug: isEditMode ? formData.slug : slug });
   };
 
-  const handleImageChange = (file: File | null) => {
-    setFormData({ ...formData, image: file });
+  const handleImageChange = async (file: File | null) => {
+    setFormData((prev) => ({ ...prev, image: file }));
     setMediaUrl(null); // Clear media URL when uploading new file
     if (file) {
+      // Preview image
       const reader = new FileReader();
       reader.onload = (e) => setImagePreview(e.target?.result as string);
       reader.readAsDataURL(file);
+
+      // Extract EXIF data and auto-fill form
+      const exif = await extractExif(file);
+      if (Object.keys(exif).length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          image: file,
+          // Only fill if field is empty
+          camera: prev.camera || exif.camera || "",
+          lens: prev.lens || exif.lens || "",
+          date: prev.date || exif.date || "",
+          latitude: prev.latitude ?? exif.latitude ?? null,
+          longitude: prev.longitude ?? exif.longitude ?? null,
+        }));
+      }
     }
   };
 
@@ -791,6 +809,12 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
                   <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                     <Upload className="w-3 h-3" />
                     新上傳: {formData.image.name}
+                  </p>
+                )}
+                {isExtractingExif && (
+                  <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    正在讀取 EXIF 資訊...
                   </p>
                 )}
               </div>
