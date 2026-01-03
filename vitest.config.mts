@@ -25,6 +25,8 @@ export default defineConfig({
         "src/app/**/page.tsx",
         // Exclude MapPickerModal - uses dynamic Leaflet imports and browser APIs
         "src/components/MapPickerModal.tsx",
+        // Exclude admin components - complex UI tested via E2E instead
+        "src/components/admin/**/*.{ts,tsx}",
       ],
       thresholds: {
         statements: 100,
