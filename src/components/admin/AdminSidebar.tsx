@@ -7,8 +7,7 @@ import {
   FileText,
   ChevronLeft,
   Settings,
-  FolderOpen,
-  Tag,
+  Layers,
   User,
   List,
   Globe,
@@ -39,8 +38,7 @@ const navItems: NavItem[] = [
     href: "/admin/photos",
     subItems: [
       { label: "All Photos", href: "/admin/photos", icon: List },
-      { label: "Categories", href: "/admin/photos/categories", icon: FolderOpen },
-      { label: "Tags", href: "/admin/photos/tags", icon: Tag },
+      { label: "Taxonomy", href: "/admin/photos/taxonomy", icon: Layers },
     ],
   },
   {
@@ -50,8 +48,7 @@ const navItems: NavItem[] = [
     href: "/admin/articles",
     subItems: [
       { label: "All Articles", href: "/admin/articles", icon: List },
-      { label: "Categories", href: "/admin/articles/categories", icon: FolderOpen },
-      { label: "Tags", href: "/admin/articles/tags", icon: Tag },
+      { label: "Taxonomy", href: "/admin/articles/taxonomy", icon: Layers },
     ],
   },
   {
