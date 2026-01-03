@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUpload } from "@/hooks/useUpload";
-import type { Photo, PhotoTag, Category } from "../types";
+import type { Photo, PhotoTag, Category, Media } from "../types";
+import { MediaLibraryContent } from "../media/MediaLibraryContent";
 import {
   Plus,
   Search,
@@ -15,7 +16,6 @@ import {
   Camera,
   Image as ImageIcon,
   FileText,
-  Filter,
   Eye,
   EyeOff,
   Clock,
@@ -23,6 +23,9 @@ import {
   Sparkles,
   Loader2,
   Globe,
+  Upload,
+  FolderOpen,
+  Filter,
 } from "lucide-react";
 
 // Dynamic import for MapPickerModal to avoid SSR issues with Leaflet
@@ -52,6 +55,9 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
   const [imagePreview, setImagePreview] = useState<string | null>(
     photo?.src || null
   );
+  const [mediaUrl, setMediaUrl] = useState<string | null>(photo?.src || null);
+  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newTagName, setNewTagName] = useState("");
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -107,10 +113,28 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
 
   const handleImageChange = (file: File | null) => {
     setFormData({ ...formData, image: file });
+    setMediaUrl(null); // Clear media URL when uploading new file
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => setImagePreview(e.target?.result as string);
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleMediaSelect = (media: Media | Media[]) => {
+    if (Array.isArray(media)) return; // Multi-select not supported
+    setMediaUrl(media.url);
+    setImagePreview(media.url);
+    setFormData({ ...formData, image: null }); // Clear file when selecting from library
+    setShowMediaPicker(false);
+  };
+
+  const handleClearImage = () => {
+    setMediaUrl(null);
+    setImagePreview(null);
+    setFormData({ ...formData, image: null });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -267,8 +291,12 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
     try {
       let imageSrc = photo?.src;
 
-      // 上傳新圖片
-      if (formData.image) {
+      // 決定圖片來源：媒體庫 > 新上傳 > 現有圖片
+      if (mediaUrl) {
+        // 從媒體庫選擇的圖片，直接使用
+        imageSrc = mediaUrl;
+      } else if (formData.image) {
+        // 上傳新圖片
         const { publicUrl } = await upload(formData.image, "photos");
         imageSrc = publicUrl;
       } else if (!isEditMode) {
@@ -720,27 +748,110 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
 
           {/* Image */}
           <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
+            <label className="block text-sm font-medium text-stone-700 mb-2">
               Image {!isEditMode && "*"}
             </label>
+
+            {imagePreview ? (
+              // 有圖片時顯示預覽
+              <div className="relative">
+                <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border border-stone-200">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaPicker(true)}
+                    className="p-1.5 bg-white/90 rounded-full text-stone-600 hover:bg-white shadow-sm"
+                    title="更換圖片"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="p-1.5 bg-white/90 rounded-full text-red-600 hover:bg-white shadow-sm"
+                    title="移除圖片"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {mediaUrl && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" />
+                    已從媒體庫選擇
+                  </p>
+                )}
+                {formData.image && (
+                  <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                    <Upload className="w-3 h-3" />
+                    新上傳: {formData.image.name}
+                  </p>
+                )}
+              </div>
+            ) : (
+              // 沒有圖片時顯示選擇按鈕
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="flex-1 flex flex-col items-center gap-2 p-6 border-2 border-dashed border-stone-200 rounded-lg hover:border-stone-400 hover:bg-stone-50 transition-colors"
+                >
+                  <FolderOpen className="w-8 h-8 text-stone-400" />
+                  <span className="text-sm text-stone-600">從媒體庫選擇</span>
+                  <span className="text-xs text-stone-400">選擇已上傳的圖片</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 flex flex-col items-center gap-2 p-6 border-2 border-dashed border-stone-200 rounded-lg hover:border-stone-400 hover:bg-stone-50 transition-colors"
+                >
+                  <Upload className="w-8 h-8 text-stone-400" />
+                  <span className="text-sm text-stone-600">上傳新圖片</span>
+                  <span className="text-xs text-stone-400">從電腦選擇檔案</span>
+                </button>
+              </div>
+            )}
+
+            {/* Hidden file input */}
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={(e) => handleImageChange(e.target.files?.[0] || null)}
-              className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
-              required={!isEditMode}
+              className="hidden"
             />
-            {imagePreview && (
-              <div className="mt-2 relative aspect-video w-full max-w-xs overflow-hidden rounded-md">
-                <Image
-                  src={imagePreview}
-                  alt="Preview"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            )}
           </div>
+
+          {/* Media Library Modal */}
+          {showMediaPicker && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+              <div className="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h3 className="text-lg font-medium text-stone-900">從媒體庫選擇</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowMediaPicker(false)}
+                    className="p-1 text-stone-400 hover:text-stone-600"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <MediaLibraryContent
+                    selectable
+                    multiSelect={false}
+                    onSelect={handleMediaSelect}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Story */}
           <div>
