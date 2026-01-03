@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useUpload } from "@/hooks/useUpload";
 import MarkdownContent from "@/components/MarkdownContent";
 import {
@@ -36,6 +37,12 @@ import {
   BarChart3,
 } from "lucide-react";
 
+// Dynamic import for MapPickerModal to avoid SSR issues with Leaflet
+const MapPickerModal = dynamic(
+  () => import("@/components/MapPickerModal"),
+  { ssr: false }
+);
+
 type Section = "photos" | "articles" | "analytics" | "settings";
 type PhotoTab = "list" | "categories" | "tags";
 type ArticleTab = "list" | "categories" | "tags";
@@ -67,6 +74,8 @@ interface Photo {
   src: string;
   category: string;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   date: string;
   camera?: string;
   lens?: string;
@@ -2622,6 +2631,7 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
   const [aiPrompt, setAiPrompt] = useState("");
   const [articles, setArticles] = useState<ArticleOption[]>([]);
   const [localTags, setLocalTags] = useState<PhotoTag[]>(tags);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // 合併資料庫分類和預設分類
   const allCategories = categories.length > 0
@@ -2633,6 +2643,8 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
     slug: photo?.slug || "",
     category: photo?.category || allCategories[0],
     location: photo?.location || "",
+    latitude: photo?.latitude ?? null as number | null,
+    longitude: photo?.longitude ?? null as number | null,
     date: photo?.date ? photo.date.split("T")[0] : "",
     camera: photo?.camera || "",
     lens: photo?.lens || "",
@@ -2843,6 +2855,8 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
         src: imageSrc,
         category: formData.category,
         location: formData.location,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         date: formData.date,
         camera: formData.camera || null,
         lens: formData.lens || null,
@@ -3027,6 +3041,88 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
                 required
               />
             </div>
+          </div>
+
+          {/* Map Coordinates */}
+          <div className="p-3 bg-stone-50 rounded-lg border border-stone-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-stone-700 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                Map Coordinates
+                <span className="text-xs text-stone-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!formData.location) return;
+                    try {
+                      const res = await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.location)}&limit=1`,
+                        { headers: { "User-Agent": "WeiChieh-Photography-Blog" } }
+                      );
+                      const data = await res.json();
+                      if (data[0]) {
+                        setFormData({
+                          ...formData,
+                          latitude: parseFloat(data[0].lat),
+                          longitude: parseFloat(data[0].lon),
+                        });
+                      }
+                    } catch (err) {
+                      console.error("Geocode error:", err);
+                    }
+                  }}
+                  className="px-2 py-1 bg-white text-stone-600 rounded border border-stone-300 hover:bg-stone-100 text-xs flex items-center gap-1"
+                  title="Search coordinates from location name"
+                >
+                  <Search className="w-3 h-3" />
+                  從地名查詢
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker(true)}
+                  className="px-2 py-1 bg-stone-700 text-white rounded hover:bg-stone-800 text-xs flex items-center gap-1"
+                >
+                  <MapPin className="w-3 h-3" />
+                  開啟地圖選點
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                type="number"
+                step="any"
+                placeholder="Latitude (e.g. 25.033)"
+                value={formData.latitude ?? ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    latitude: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                className="px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
+              />
+              <input
+                type="number"
+                step="any"
+                placeholder="Longitude (e.g. 121.565)"
+                value={formData.longitude ?? ""}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    longitude: e.target.value ? parseFloat(e.target.value) : null,
+                  })
+                }
+                className="px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 bg-white"
+              />
+            </div>
+            {formData.latitude && formData.longitude && (
+              <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                Photo will appear on the map page
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -3372,6 +3468,19 @@ function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalP
           </div>
         </form>
       </div>
+
+      {/* Map Picker Modal */}
+      {showMapPicker && (
+        <MapPickerModal
+          latitude={formData.latitude}
+          longitude={formData.longitude}
+          onSelect={(lat, lng) => {
+            setFormData({ ...formData, latitude: lat, longitude: lng });
+            setShowMapPicker(false);
+          }}
+          onClose={() => setShowMapPicker(false)}
+        />
+      )}
     </div>
   );
 }

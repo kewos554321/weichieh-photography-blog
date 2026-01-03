@@ -73,6 +73,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         title: body.title,
         category: body.category,
         location: body.location,
+        ...(body.latitude !== undefined && { latitude: body.latitude }),
+        ...(body.longitude !== undefined && { longitude: body.longitude }),
         date: body.date ? new Date(body.date) : undefined,
         camera: body.camera,
         lens: body.lens,

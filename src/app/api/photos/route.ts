@@ -95,6 +95,8 @@ export async function POST(request: NextRequest) {
         src,
         category,
         location,
+        latitude: body.latitude ?? null,
+        longitude: body.longitude ?? null,
         date: new Date(date),
         camera: body.camera || null,
         lens: body.lens || null,

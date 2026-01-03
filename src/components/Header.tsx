@@ -33,6 +33,12 @@ export default function Header() {
             Blog
           </Link>
           <Link
+            href="/map"
+            className={isActive("/map") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
+          >
+            Map
+          </Link>
+          <Link
             href="/about"
             className={`hidden md:block ${isActive("/about") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}`}
           >
