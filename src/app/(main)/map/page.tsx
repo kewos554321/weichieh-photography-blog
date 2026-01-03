@@ -134,10 +134,12 @@ export default function MapPage() {
           .leaflet-popup-content-wrapper {
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 0;
+            overflow: hidden;
           }
           .leaflet-popup-content {
-            margin: 0;
-            min-width: 200px;
+            margin: 0 !important;
+            width: 220px !important;
           }
           .leaflet-popup-tip {
             background: white;
@@ -169,8 +171,8 @@ export default function MapPage() {
               }}
             >
               <Popup>
-                <div className="p-0">
-                  <div className="relative w-[200px] h-[150px] -mx-5 -mt-3 mb-3 overflow-hidden rounded-t-lg">
+                <div>
+                  <div className="relative w-full h-[140px] overflow-hidden">
                     <Image
                       src={photo.src}
                       alt={photo.title}
@@ -178,7 +180,7 @@ export default function MapPage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="px-1 pb-1">
+                  <div className="p-3">
                     <p className="text-xs text-[#6b9e9a] uppercase tracking-wider mb-1">
                       {photo.category}
                     </p>
