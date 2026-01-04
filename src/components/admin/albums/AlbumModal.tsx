@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { X, Loader2, Images, Plus, Trash2 } from "lucide-react";
+import { X, Loader2, Images, Plus, Trash2, Wand2 } from "lucide-react";
 
 interface Photo {
   id: number;
@@ -29,6 +29,7 @@ interface AlbumModalProps {
 
 export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availablePhotos, setAvailablePhotos] = useState<Photo[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
@@ -70,6 +71,34 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
       .replace(/-+/g, "-")
       .trim();
     setFormData({ ...formData, name, slug: isEditMode ? formData.slug : slug });
+  };
+
+  const handleGenerateSlug = async () => {
+    if (!formData.name.trim()) return;
+
+    setIsGeneratingSlug(true);
+    try {
+      const response = await fetch("/api/ai/generate-slug", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.name,
+          type: "album",
+          excludeSlug: isEditMode ? album?.slug : undefined,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate slug");
+
+      const data = await response.json();
+      if (data.slug) {
+        setFormData((prev) => ({ ...prev, slug: data.slug }));
+      }
+    } catch (err) {
+      console.error("Generate slug error:", err);
+    } finally {
+      setIsGeneratingSlug(false);
+    }
   };
 
   const handleAddPhotos = async () => {
@@ -201,14 +230,28 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
               <label className="block text-sm font-medium text-stone-700 mb-1">
                 Slug
               </label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full px-3 py-2 border border-stone-300 rounded-md bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-500"
-                required
-                disabled={isEditMode}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-stone-300 rounded-md bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateSlug}
+                  disabled={isGeneratingSlug || !formData.name.trim()}
+                  className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="AI 產生 Slug"
+                >
+                  {isGeneratingSlug ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 

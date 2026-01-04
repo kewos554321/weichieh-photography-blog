@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateUniqueAlbumSlug } from "@/lib/slug";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
@@ -69,7 +70,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const body = await request.json();
 
-    const album = await prisma.album.findUnique({ where: { slug } });
+    const album = await prisma.album.findUnique({
+      where: { slug },
+      select: { name: true },
+    });
     if (!album) {
       return NextResponse.json(
         { error: "Album not found" },
@@ -77,28 +81,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 如果要更新 slug，檢查新 slug 是否已存在
-    if (body.slug && body.slug !== slug) {
-      const existing = await prisma.album.findUnique({
-        where: { slug: body.slug },
-      });
-      if (existing) {
-        return NextResponse.json(
-          { error: "Slug already exists" },
-          { status: 409 }
-        );
-      }
+    // 如果 name 有變更，重新產生 slug
+    let newSlug: string | undefined;
+    if (body.name && body.name !== album.name) {
+      newSlug = await generateUniqueAlbumSlug(body.name, slug);
     }
 
     const updated = await prisma.album.update({
       where: { slug },
       data: {
-        name: body.name ?? album.name,
-        slug: body.slug ?? album.slug,
-        description: body.description !== undefined ? body.description : album.description,
-        coverUrl: body.coverUrl !== undefined ? body.coverUrl : album.coverUrl,
-        isPublic: body.isPublic !== undefined ? body.isPublic : album.isPublic,
-        sortOrder: body.sortOrder ?? album.sortOrder,
+        name: body.name,
+        ...(newSlug && { slug: newSlug }),
+        description: body.description !== undefined ? body.description : undefined,
+        coverUrl: body.coverUrl !== undefined ? body.coverUrl : undefined,
+        isPublic: body.isPublic !== undefined ? body.isPublic : undefined,
+        sortOrder: body.sortOrder,
       },
     });
 

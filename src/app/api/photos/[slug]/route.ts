@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
+import { generateUniquePhotoSlug } from "@/lib/slug";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -67,10 +68,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const body = await request.json();
 
+    // 取得目前的照片
+    const currentPhoto = await prisma.photo.findUnique({
+      where: { slug },
+      select: { title: true },
+    });
+
+    if (!currentPhoto) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+
+    // 如果 title 有變更，重新產生 slug
+    let newSlug: string | undefined;
+    if (body.title && body.title !== currentPhoto.title) {
+      newSlug = await generateUniquePhotoSlug(body.title, slug);
+    }
+
     const photo = await prisma.photo.update({
       where: { slug },
       data: {
         title: body.title,
+        ...(newSlug && { slug: newSlug }),
         category: body.category,
         location: body.location,
         ...(body.latitude !== undefined && { latitude: body.latitude }),

@@ -27,6 +27,7 @@ import {
   Upload,
   FolderOpen,
   Filter,
+  Wand2,
 } from "lucide-react";
 
 // Dynamic import for MapPickerModal to avoid SSR issues with Leaflet
@@ -62,6 +63,7 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newTagName, setNewTagName] = useState("");
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [articles, setArticles] = useState<ArticleOption[]>([]);
   const [localTags, setLocalTags] = useState<PhotoTag[]>(tags);
@@ -111,6 +113,34 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
       .replace(/-+/g, "-")
       .trim();
     setFormData({ ...formData, title, slug: isEditMode ? formData.slug : slug });
+  };
+
+  const handleGenerateSlug = async () => {
+    if (!formData.title.trim()) return;
+
+    setIsGeneratingSlug(true);
+    try {
+      const response = await fetch("/api/ai/generate-slug", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.title,
+          type: "photo",
+          excludeSlug: isEditMode ? photo?.slug : undefined,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate slug");
+
+      const data = await response.json();
+      if (data.slug) {
+        setFormData((prev) => ({ ...prev, slug: data.slug }));
+      }
+    } catch (err) {
+      console.error("Generate slug error:", err);
+    } finally {
+      setIsGeneratingSlug(false);
+    }
   };
 
   const handleImageChange = async (file: File | null) => {
@@ -446,20 +476,31 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-1">
                 Slug
-                {isEditMode && formData.story !== "待編輯..." && formData.story !== "" && (
-                  <span className="text-xs text-stone-400 ml-2">(編輯模式下無法修改)</span>
-                )}
               </label>
-              <input
-                type="text"
-                value={formData.slug}
-                onChange={(e) =>
-                  setFormData({ ...formData, slug: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-stone-300 rounded-md bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-500"
-                required
-                disabled={isEditMode && formData.story !== "待編輯..." && formData.story !== ""}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={formData.slug}
+                  onChange={(e) =>
+                    setFormData({ ...formData, slug: e.target.value })
+                  }
+                  className="flex-1 px-3 py-2 border border-stone-300 rounded-md bg-stone-50 focus:outline-none focus:ring-2 focus:ring-stone-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateSlug}
+                  disabled={isGeneratingSlug || !formData.title.trim()}
+                  className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="AI 產生 Slug"
+                >
+                  {isGeneratingSlug ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 

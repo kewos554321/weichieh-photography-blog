@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
+import { generateUniqueArticleSlug } from "@/lib/slug";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -71,6 +72,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const body = await request.json();
 
+    // 取得目前的文章
+    const currentArticle = await prisma.article.findUnique({
+      where: { slug },
+      select: { title: true },
+    });
+
+    if (!currentArticle) {
+      return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    }
+
+    // 如果 title 有變更，重新產生 slug
+    let newSlug: string | undefined;
+    if (body.title && body.title !== currentArticle.title) {
+      newSlug = await generateUniqueArticleSlug(body.title, slug);
+    }
+
     // 重新計算閱讀時間
     const readTime = body.content
       ? Math.ceil(body.content.length / 300)
@@ -80,6 +97,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       where: { slug },
       data: {
         title: body.title,
+        ...(newSlug && { slug: newSlug }),
         excerpt: body.excerpt,
         content: body.content,
         category: body.category,
