@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
-import { useRouter, notFound } from "next/navigation";
+import { useEffect, useState } from "react";
+import { notFound } from "next/navigation";
 import { CommentForm, CommentList } from "@/components/comments";
 import { LikeButton } from "@/components/photo";
 
@@ -38,7 +38,6 @@ interface Photo {
 }
 
 export default function PhotoPage({ params }: { params: Promise<{ slug: string }> }) {
-  const router = useRouter();
   const [slug, setSlug] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [relatedPhotos, setRelatedPhotos] = useState<Photo[]>([]);
@@ -98,22 +97,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
   const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
 
-  // Keyboard navigation
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      router.push("/");
-    } else if (e.key === "ArrowLeft" && prevPhoto) {
-      router.push(`/photo/${prevPhoto.slug}`);
-    } else if (e.key === "ArrowRight" && nextPhoto) {
-      router.push(`/photo/${nextPhoto.slug}`);
-    }
-  }, [prevPhoto, nextPhoto, router]);
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
-
   if (isLoading) {
     return (
       <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
@@ -139,18 +122,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
           <span>/</span>
           <span className="text-stone-600">{photo.title}</span>
         </nav>
-      </div>
-
-      {/* Keyboard Hint */}
-      <div className="hidden md:block fixed bottom-6 right-6 z-50">
-        <div className="flex items-center gap-2 text-xs text-stone-400 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
-          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">←</kbd>
-          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">→</kbd>
-          <span>Navigate</span>
-          <span className="text-stone-300 mx-1">|</span>
-          <kbd className="px-2 py-0.5 bg-stone-100 rounded text-stone-500">Esc</kbd>
-          <span>Gallery</span>
-        </div>
       </div>
 
       {/* Hero Section - Image Left, Info Right */}

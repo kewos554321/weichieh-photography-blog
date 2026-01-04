@@ -127,100 +127,111 @@ export function EnhancedLightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Close button */}
-      <button
-        className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
-        onClick={onClose}
-        aria-label="Close lightbox"
-      >
-        <X className="w-8 h-8" />
-      </button>
+      {/* Top bar */}
+      <div className="flex items-center justify-between p-4 shrink-0 relative">
+        {/* Photo counter */}
+        <div className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-white/80 text-sm">
+          {currentIndex + 1} / {photos.length}
+        </div>
 
-      {/* Photo counter */}
-      <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-white/80 text-sm">
-        {currentIndex + 1} / {photos.length}
+        {/* Title */}
+        <h3 className="text-white font-serif text-lg absolute left-1/2 -translate-x-1/2">
+          {currentPhoto.title}
+        </h3>
+
+        {/* Close button */}
+        <button
+          className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          onClick={onClose}
+          aria-label="Close lightbox"
+        >
+          <X className="w-8 h-8" />
+        </button>
       </div>
 
-      {/* Previous button */}
-      {hasPrev && (
-        <button
-          className="absolute left-4 z-10 w-12 h-12 flex items-center justify-center text-white/50 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
-          onClick={goToPrev}
-          aria-label="Previous photo"
-        >
-          <ChevronLeft className="w-8 h-8" />
-        </button>
-      )}
-
-      {/* Next button */}
-      {hasNext && (
-        <button
-          className="absolute right-4 z-10 w-12 h-12 flex items-center justify-center text-white/50 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
-          onClick={goToNext}
-          aria-label="Next photo"
-        >
-          <ChevronRight className="w-8 h-8" />
-        </button>
-      )}
-
-      {/* Main image container - click to close */}
-      <div
-        className="relative w-[90vw] h-[90vh] cursor-zoom-out"
-        onClick={onClose}
-      >
-        {/* Loading indicator */}
-        {!isLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          </div>
+      {/* Main image area */}
+      <div className="flex-1 flex items-center justify-center relative min-h-0">
+        {/* Previous button */}
+        {hasPrev && (
+          <button
+            className="absolute left-4 z-10 w-12 h-12 flex items-center justify-center text-white/50 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
+            onClick={goToPrev}
+            aria-label="Previous photo"
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </button>
         )}
 
-        {/* Image */}
-        <Image
-          key={currentPhoto.src}
-          src={currentPhoto.src}
-          alt={currentPhoto.title}
-          fill
-          className={`object-contain transition-opacity duration-300 ${
-            isLoaded ? "opacity-100" : "opacity-0"
-          }`}
-          sizes="90vw"
-          priority
-          onLoad={() => setIsLoaded(true)}
-          onClick={(e) => e.stopPropagation()}
-        />
+        {/* Next button */}
+        {hasNext && (
+          <button
+            className="absolute right-4 z-10 w-12 h-12 flex items-center justify-center text-white/50 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-full"
+            onClick={goToNext}
+            aria-label="Next photo"
+          >
+            <ChevronRight className="w-8 h-8" />
+          </button>
+        )}
+
+        {/* Image container - click to close */}
+        <div
+          className="relative w-full h-full cursor-zoom-out p-4 md:px-20"
+          onClick={onClose}
+        >
+          {/* Loading indicator */}
+          {!isLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Image */}
+          <Image
+            key={currentPhoto.src}
+            src={currentPhoto.src}
+            alt={currentPhoto.title}
+            fill
+            className={`object-contain transition-opacity duration-300 ${
+              isLoaded ? "opacity-100" : "opacity-0"
+            }`}
+            sizes="90vw"
+            priority
+            onLoad={() => setIsLoaded(true)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       </div>
 
-      {/* Photo title & actions */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center max-w-xl px-4">
-        <h3 className="text-white font-serif text-lg mb-3">{currentPhoto.title}</h3>
+      {/* Bottom bar - actions */}
+      <div className="shrink-0 p-4 md:p-6 border-t border-white/10">
+        <div className="max-w-4xl mx-auto flex items-center justify-center gap-6">
+          {/* View Details Link */}
+          <Link
+            href={`/photo/${currentPhoto.slug}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors"
+          >
+            <span>查看詳情</span>
+            <ExternalLink className="w-4 h-4" />
+          </Link>
 
-        {/* View Details Link */}
-        <Link
-          href={`/photo/${currentPhoto.slug}`}
-          className="inline-flex items-center gap-2 px-4 py-2 mb-4 bg-white/10 hover:bg-white/20 text-white text-sm rounded-full transition-colors"
-        >
-          <span>查看詳情</span>
-          <ExternalLink className="w-4 h-4" />
-        </Link>
-
-        {/* Keyboard hints */}
-        <div className="text-white/50 text-xs flex items-center justify-center gap-4">
-          <span className="flex items-center gap-2">
-            <kbd className="px-2 py-0.5 bg-white/10 rounded">←</kbd>
-            <kbd className="px-2 py-0.5 bg-white/10 rounded">→</kbd>
-            <span>Navigate</span>
-          </span>
-          <span className="text-white/30">|</span>
-          <span className="flex items-center gap-2">
-            <kbd className="px-2 py-0.5 bg-white/10 rounded">Esc</kbd>
-            <span>Close</span>
-          </span>
+          {/* Keyboard hints - hidden on mobile */}
+          <div className="hidden md:flex text-white/50 text-xs items-center gap-4">
+            <span className="flex items-center gap-2">
+              <kbd className="px-2 py-0.5 bg-white/10 rounded">←</kbd>
+              <kbd className="px-2 py-0.5 bg-white/10 rounded">→</kbd>
+              <span>Navigate</span>
+            </span>
+            <span className="text-white/30">|</span>
+            <span className="flex items-center gap-2">
+              <kbd className="px-2 py-0.5 bg-white/10 rounded">Esc</kbd>
+              <span>Close</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>

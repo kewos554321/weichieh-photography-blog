@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Maximize2 } from "lucide-react";
+import { EnhancedLightbox } from "@/components/lightbox/EnhancedLightbox";
 
 interface Photo {
   id: number;
@@ -18,6 +20,7 @@ export default function Home() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [filter, setFilter] = useState("All");
   const [loading, setLoading] = useState(true);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/photos")
@@ -121,30 +124,40 @@ export default function Home() {
         {filteredPhotos.length > 0 ? (
           <div className="columns-2 md:columns-3 lg:columns-4 gap-3 md:gap-4">
             {filteredPhotos.map((photo, index) => (
-              <Link
+              <div
                 key={photo.id}
-                href={`/photo/${photo.slug}`}
-                className="mb-3 md:mb-4 break-inside-avoid group block"
+                className="mb-3 md:mb-4 break-inside-avoid group relative"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="relative overflow-hidden rounded-sm">
-                  <Image
-                    src={photo.src}
-                    alt={photo.title}
-                    width={600}
-                    height={800}
-                    className="w-full h-auto transition-all duration-700 group-hover:scale-[1.03]"
-                  />
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 via-stone-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                <Link href={`/photo/${photo.slug}`} className="block">
+                  <div className="relative overflow-hidden rounded-sm">
+                    <Image
+                      src={photo.src}
+                      alt={photo.title}
+                      width={600}
+                      height={800}
+                      className="w-full h-auto transition-all duration-700 group-hover:scale-[1.03]"
+                    />
+                    {/* Hover Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 via-stone-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
 
-                  {/* Photo Info */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">
-                    <p className="text-[10px] tracking-[0.2em] uppercase text-[#d4a574] mb-1">{photo.category}</p>
-                    <h3 className="font-serif text-sm md:text-base text-white">{photo.title}</h3>
+                    {/* Photo Info */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+                      <p className="text-[10px] tracking-[0.2em] uppercase text-[#d4a574] mb-1">{photo.category}</p>
+                      <h3 className="font-serif text-sm md:text-base text-white">{photo.title}</h3>
+                    </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+
+                {/* Lightbox Button */}
+                <button
+                  onClick={() => setLightboxIndex(index)}
+                  className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white/70 hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 z-10"
+                  aria-label="Open in lightbox"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
             ))}
           </div>
         ) : (
@@ -168,6 +181,16 @@ export default function Home() {
           </Link>
         </div>
       </section>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && (
+        <EnhancedLightbox
+          photos={filteredPhotos}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </div>
   );
 }
