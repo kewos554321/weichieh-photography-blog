@@ -3,10 +3,12 @@ import { NextRequest } from "next/server";
 import { mockPrisma, resetMocks } from "../mocks/prisma";
 
 // Use vi.hoisted to ensure mocks are available before vi.mock
-const { mockSend, MockS3Client, MockDeleteObjectCommand } = vi.hoisted(() => {
+const { mockSend, MockS3Client, MockDeleteObjectCommand, mockGenerateUniqueArticleSlug } = vi.hoisted(() => {
   const mockSend = vi.fn();
+  const mockGenerateUniqueArticleSlug = vi.fn();
   return {
     mockSend,
+    mockGenerateUniqueArticleSlug,
     MockS3Client: class {
       send = mockSend;
     },
@@ -25,12 +27,17 @@ vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }));
 
+vi.mock("@/lib/slug", () => ({
+  generateUniqueArticleSlug: mockGenerateUniqueArticleSlug,
+}));
+
 import { GET, PUT, DELETE } from "@/app/api/articles/[slug]/route";
 
 describe("Articles [slug] API", () => {
   beforeEach(() => {
     resetMocks();
     mockSend.mockReset();
+    mockGenerateUniqueArticleSlug.mockReset();
   });
 
   const createRequest = (slug: string, method = "GET", body?: object) => {
@@ -171,9 +178,13 @@ describe("Articles [slug] API", () => {
   });
 
   describe("PUT /api/articles/[slug]", () => {
+    const mockCurrentArticle = { title: "Original Title" };
+
     it("should update an article", async () => {
       const mockArticle = { id: 1, slug: "test-article", title: "Updated Title" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
+      mockGenerateUniqueArticleSlug.mockResolvedValue("updated-title");
 
       const response = await PUT(
         createRequest("test-article", "PUT", { title: "Updated Title" }),
@@ -184,8 +195,56 @@ describe("Articles [slug] API", () => {
       expect(data).toEqual(mockArticle);
     });
 
+    it("should regenerate slug when title changes", async () => {
+      const mockArticle = { id: 1, slug: "new-title", title: "New Title" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+      mockGenerateUniqueArticleSlug.mockResolvedValue("new-title");
+
+      await PUT(
+        createRequest("test-article", "PUT", { title: "New Title" }),
+        createParams("test-article")
+      );
+
+      expect(mockGenerateUniqueArticleSlug).toHaveBeenCalledWith("New Title", "test-article");
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            slug: "new-title",
+          }),
+        })
+      );
+    });
+
+    it("should not regenerate slug when title unchanged", async () => {
+      const mockArticle = { id: 1, slug: "test-article", title: "Original Title" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
+      mockPrisma.article.update.mockResolvedValue(mockArticle);
+
+      await PUT(
+        createRequest("test-article", "PUT", { title: "Original Title" }),
+        createParams("test-article")
+      );
+
+      expect(mockGenerateUniqueArticleSlug).not.toHaveBeenCalled();
+    });
+
+    it("should return 404 if article not found", async () => {
+      mockPrisma.article.findUnique.mockResolvedValue(null);
+
+      const response = await PUT(
+        createRequest("nonexistent", "PUT", { title: "Test" }),
+        createParams("nonexistent")
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe("Article not found");
+    });
+
     it("should update article with new cover", async () => {
       const mockArticle = { id: 1, slug: "test-article", cover: "https://new.com/cover.jpg" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -202,6 +261,7 @@ describe("Articles [slug] API", () => {
 
     it("should update article with tags", async () => {
       const mockArticle = { id: 1, slug: "test-article", tags: [{ id: 1 }] };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -221,6 +281,7 @@ describe("Articles [slug] API", () => {
     it("should recalculate read time when content changes", async () => {
       const longContent = "a".repeat(600); // 600 chars = 2 min read
       const mockArticle = { id: 1, slug: "test-article", readTime: 2 };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -237,6 +298,7 @@ describe("Articles [slug] API", () => {
 
     it("should update date when provided", async () => {
       const mockArticle = { id: 1, slug: "test-article" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -255,10 +317,11 @@ describe("Articles [slug] API", () => {
 
     it("should not update date when not provided", async () => {
       const mockArticle = { id: 1, slug: "test-article" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
-        createRequest("test-article", "PUT", { title: "Test" }),
+        createRequest("test-article", "PUT", { excerpt: "Test excerpt" }),
         createParams("test-article")
       );
 
@@ -273,6 +336,7 @@ describe("Articles [slug] API", () => {
 
     it("should update status", async () => {
       const mockArticle = { id: 1, slug: "test-article", status: "published" };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -292,6 +356,7 @@ describe("Articles [slug] API", () => {
     it("should update publishedAt", async () => {
       const publishedAt = "2025-06-15T10:00:00";
       const mockArticle = { id: 1, slug: "test-article", publishedAt: new Date(publishedAt) };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -310,6 +375,7 @@ describe("Articles [slug] API", () => {
 
     it("should clear publishedAt when set to null", async () => {
       const mockArticle = { id: 1, slug: "test-article", publishedAt: null };
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockResolvedValue(mockArticle);
 
       await PUT(
@@ -327,10 +393,11 @@ describe("Articles [slug] API", () => {
     });
 
     it("should handle errors", async () => {
+      mockPrisma.article.findUnique.mockResolvedValue(mockCurrentArticle);
       mockPrisma.article.update.mockRejectedValue(new Error("DB error"));
 
       const response = await PUT(
-        createRequest("test-article", "PUT", { title: "Test" }),
+        createRequest("test-article", "PUT", { excerpt: "Test" }),
         createParams("test-article")
       );
       const data = await response.json();

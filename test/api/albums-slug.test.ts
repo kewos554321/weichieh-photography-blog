@@ -2,8 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { mockPrisma, resetMocks } from "../mocks/prisma";
 
+const { mockGenerateUniqueAlbumSlug } = vi.hoisted(() => {
+  const mockGenerateUniqueAlbumSlug = vi.fn();
+  return { mockGenerateUniqueAlbumSlug };
+});
+
 vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
+}));
+
+vi.mock("@/lib/slug", () => ({
+  generateUniqueAlbumSlug: mockGenerateUniqueAlbumSlug,
 }));
 
 import { GET, PUT, DELETE } from "@/app/api/albums/[slug]/route";
@@ -11,6 +20,7 @@ import { GET, PUT, DELETE } from "@/app/api/albums/[slug]/route";
 describe("Albums [slug] API", () => {
   beforeEach(() => {
     resetMocks();
+    mockGenerateUniqueAlbumSlug.mockReset();
   });
 
   const createRequest = (slug: string, method = "GET", body?: object, admin = false) => {
@@ -128,21 +138,16 @@ describe("Albums [slug] API", () => {
   });
 
   describe("PUT /api/albums/[slug]", () => {
+    const mockCurrentAlbum = { name: "Test Album" };
+
     it("should update album", async () => {
-      const mockAlbum = {
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
+      mockPrisma.album.update.mockResolvedValue({
         id: 1,
         slug: "test-album",
-        name: "Test Album",
-        description: "Desc",
-        coverUrl: null,
-        isPublic: true,
-        sortOrder: 1,
-      };
-      mockPrisma.album.findUnique.mockResolvedValue(mockAlbum);
-      mockPrisma.album.update.mockResolvedValue({
-        ...mockAlbum,
         name: "Updated Name",
       });
+      mockGenerateUniqueAlbumSlug.mockResolvedValue("updated-name");
 
       const response = await PUT(
         createRequest("test-album", "PUT", { name: "Updated Name" }),
@@ -151,6 +156,46 @@ describe("Albums [slug] API", () => {
       const data = await response.json();
 
       expect(data.name).toBe("Updated Name");
+    });
+
+    it("should regenerate slug when name changes", async () => {
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
+      mockPrisma.album.update.mockResolvedValue({
+        id: 1,
+        slug: "new-name",
+        name: "New Name",
+      });
+      mockGenerateUniqueAlbumSlug.mockResolvedValue("new-name");
+
+      await PUT(
+        createRequest("test-album", "PUT", { name: "New Name" }),
+        createParams("test-album")
+      );
+
+      expect(mockGenerateUniqueAlbumSlug).toHaveBeenCalledWith("New Name", "test-album");
+      expect(mockPrisma.album.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            slug: "new-name",
+          }),
+        })
+      );
+    });
+
+    it("should not regenerate slug when name unchanged", async () => {
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
+      mockPrisma.album.update.mockResolvedValue({
+        id: 1,
+        slug: "test-album",
+        name: "Test Album",
+      });
+
+      await PUT(
+        createRequest("test-album", "PUT", { name: "Test Album" }),
+        createParams("test-album")
+      );
+
+      expect(mockGenerateUniqueAlbumSlug).not.toHaveBeenCalled();
     });
 
     it("should return 404 for non-existent album", async () => {
@@ -166,49 +211,58 @@ describe("Albums [slug] API", () => {
       expect(data.error).toBe("Album not found");
     });
 
-    it("should return 409 if new slug already exists", async () => {
-      const mockAlbum = { id: 1, slug: "test-album", name: "Test" };
-      mockPrisma.album.findUnique
-        .mockResolvedValueOnce(mockAlbum) // First call: find current album
-        .mockResolvedValueOnce({ id: 2, slug: "existing-slug" }); // Second call: check new slug
-
-      const response = await PUT(
-        createRequest("test-album", "PUT", { slug: "existing-slug" }),
-        createParams("test-album")
-      );
-      const data = await response.json();
-
-      expect(response.status).toBe(409);
-      expect(data.error).toBe("Slug already exists");
-    });
-
-    it("should allow updating slug if new slug is same as current", async () => {
-      const mockAlbum = {
+    it("should update description", async () => {
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
+      mockPrisma.album.update.mockResolvedValue({
         id: 1,
         slug: "test-album",
-        name: "Test",
-        description: null,
-        coverUrl: null,
-        isPublic: true,
-        sortOrder: 1,
-      };
-      mockPrisma.album.findUnique.mockResolvedValue(mockAlbum);
-      mockPrisma.album.update.mockResolvedValue(mockAlbum);
+        name: "Test Album",
+        description: "New description",
+      });
 
-      const response = await PUT(
-        createRequest("test-album", "PUT", { slug: "test-album" }),
+      await PUT(
+        createRequest("test-album", "PUT", { description: "New description" }),
         createParams("test-album")
       );
 
-      expect(response.status).toBe(200);
+      expect(mockPrisma.album.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            description: "New description",
+          }),
+        })
+      );
+    });
+
+    it("should update isPublic", async () => {
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
+      mockPrisma.album.update.mockResolvedValue({
+        id: 1,
+        slug: "test-album",
+        name: "Test Album",
+        isPublic: false,
+      });
+
+      await PUT(
+        createRequest("test-album", "PUT", { isPublic: false }),
+        createParams("test-album")
+      );
+
+      expect(mockPrisma.album.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            isPublic: false,
+          }),
+        })
+      );
     });
 
     it("should handle errors", async () => {
-      mockPrisma.album.findUnique.mockResolvedValue({ id: 1, slug: "test" });
+      mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
       mockPrisma.album.update.mockRejectedValue(new Error("DB error"));
 
       const response = await PUT(
-        createRequest("test-album", "PUT", { name: "Updated" }),
+        createRequest("test-album", "PUT", { description: "Updated" }),
         createParams("test-album")
       );
       const data = await response.json();
