@@ -38,7 +38,7 @@ interface Photo {
 export default function MapPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [_selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {

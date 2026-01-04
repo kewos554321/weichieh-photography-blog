@@ -143,6 +143,7 @@ export function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) 
     return () => {
       files.forEach((f) => URL.revokeObjectURL(f.preview));
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

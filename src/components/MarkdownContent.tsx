@@ -19,6 +19,7 @@ export default function MarkdownContent({ content, className = "" }: MarkdownCon
       if (imgMatch) {
         result.push(
           <span key={key++} className="block my-6">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imgMatch[2]}
               alt={imgMatch[1]}
@@ -169,6 +170,7 @@ export default function MarkdownContent({ content, className = "" }: MarkdownCon
       const match = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)!;
       return (
         <figure key={index} className="my-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={match[2]}
             alt={match[1]}

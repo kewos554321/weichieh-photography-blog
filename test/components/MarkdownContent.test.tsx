@@ -106,7 +106,7 @@ describe("MarkdownContent", () => {
     });
 
     it("should render inline image with alt text as caption", () => {
-      const { container } = render(
+      render(
         <MarkdownContent content="Here is ![My Caption](/inline.jpg) in text" />
       );
       // Caption should appear for inline images with alt text

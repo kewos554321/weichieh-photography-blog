@@ -76,6 +76,7 @@ export async function applyWatermark(
         if (settings.type === "text" && settings.text) {
           await applyTextWatermark(ctx, settings, canvas.width, x, y, textAlign, textBaseline);
         } else if (settings.type === "logo" && settings.logoUrl) {
+          ctx.textAlign = textAlign;
           await applyLogoWatermark(ctx, settings, canvas.width, x, y);
         }
 
@@ -181,8 +182,7 @@ async function applyLogoWatermark(
   x: number,
   y: number
 ): Promise<void> {
-  if (!settings.logoUrl) return;
-
+  // Note: logoUrl is already validated by the caller
   const logo = new Image();
   logo.crossOrigin = "anonymous";
 

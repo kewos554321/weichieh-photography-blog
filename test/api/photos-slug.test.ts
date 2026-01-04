@@ -187,7 +187,7 @@ describe("Photos [slug] API", () => {
       const mockPhoto = { id: 1, slug: "test-photo", src: "https://new.com/image.jpg" };
       mockPrisma.photo.update.mockResolvedValue(mockPhoto);
 
-      const response = await PUT(
+      await PUT(
         createRequest("test-photo", "PUT", { src: "https://new.com/image.jpg" }),
         createParams("test-photo")
       );

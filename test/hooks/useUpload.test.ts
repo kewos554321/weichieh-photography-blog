@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
 // Mock watermark module
 const mockApplyWatermark = vi.fn();
@@ -17,12 +17,13 @@ vi.mock("@/lib/watermark", () => ({
   },
 }));
 
-import { useUpload } from "@/hooks/useUpload";
+import { useUpload, resetWatermarkCache } from "@/hooks/useUpload";
 
 describe("useUpload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
+    resetWatermarkCache();
   });
 
   it("should return initial state", () => {

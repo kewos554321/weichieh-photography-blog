@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/cron/publish - 手動觸發發布（需要 admin 權限）
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // 這裡可以加入 admin 認證檢查
     const result = await publishScheduledContent();

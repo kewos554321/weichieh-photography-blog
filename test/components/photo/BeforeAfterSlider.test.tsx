@@ -5,6 +5,7 @@ import { BeforeAfterSlider } from "@/components/photo/BeforeAfterSlider";
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} className={className} data-testid={`image-${alt}`} />
   ),
 }));

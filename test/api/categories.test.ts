@@ -71,7 +71,7 @@ describe("Categories API", () => {
         });
 
         const response = await postPhotoCategory(request);
-        const data = await response.json();
+        await response.json();
 
         expect(response.status).toBe(201);
         expect(mockPrisma.photoCategory.create).toHaveBeenCalledWith({
@@ -342,7 +342,7 @@ describe("Categories API", () => {
         });
 
         const response = await postArticleCategory(request);
-        const data = await response.json();
+        await response.json();
 
         expect(response.status).toBe(201);
         expect(mockPrisma.articleCategory.create).toHaveBeenCalledWith({

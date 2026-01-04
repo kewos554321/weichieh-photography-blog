@@ -5,6 +5,7 @@ import { EnhancedLightbox } from "@/components/lightbox/EnhancedLightbox";
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({ src, alt, onLoad, onClick, className }: { src: string; alt: string; onLoad?: () => void; onClick?: (e: React.MouseEvent) => void; className?: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={alt}

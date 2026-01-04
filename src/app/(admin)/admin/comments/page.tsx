@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   MessageSquare,
@@ -35,7 +35,7 @@ export default function AdminCommentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setIsLoading(true);
     try {
       const statusParam = filter === "all" ? "" : `&status=${filter}`;
@@ -49,11 +49,11 @@ export default function AdminCommentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filter, page]);
 
   useEffect(() => {
     fetchComments();
-  }, [filter, page]);
+  }, [fetchComments]);
 
   const handleApprove = async (id: number) => {
     try {

@@ -49,6 +49,10 @@ describe("watermark", () => {
     // Reset mock canvas
     mockCanvas.width = 0;
     mockCanvas.height = 0;
+    mockCanvas.getContext = vi.fn(() => mockCtx);
+    mockCanvas.toBlob = vi.fn((callback: (blob: Blob | null) => void) => {
+      callback(new Blob(["test"], { type: "image/jpeg" }));
+    });
     Object.assign(mockCtx, {
       drawImage: vi.fn(),
       fillText: vi.fn(),
@@ -102,28 +106,29 @@ describe("watermark", () => {
         position: "bottom-right",
       };
 
-      // Mock Image
-      const mockImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 1000,
-        height: 800,
-        src: "",
-      };
+      // Create a mock Image class
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 1000;
+        height = 800;
+        src = "";
 
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        setTimeout(() => {
-          if (mockImage.onload) mockImage.onload();
-        }, 0);
-        return mockImage as unknown as HTMLImageElement;
-      });
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      }
 
-      const resultPromise = applyWatermark(file, settings);
+      vi.stubGlobal("Image", MockImage);
 
-      const result = await resultPromise;
+      const result = await applyWatermark(file, settings);
 
       expect(result).toBeInstanceOf(File);
       expect(result.name).toBe("photo.jpg");
+
+      vi.unstubAllGlobals();
     });
 
     it("should apply logo watermark", async () => {
@@ -136,44 +141,38 @@ describe("watermark", () => {
         position: "bottom-right",
       };
 
-      // Mock main Image
-      const mockMainImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 1000,
-        height: 800,
-        src: "",
-      };
-
-      // Mock logo Image
-      const mockLogoImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 100,
-        height: 50,
-        crossOrigin: "",
-        src: "",
-      };
-
       let imageCallCount = 0;
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        imageCallCount++;
-        if (imageCallCount === 1) {
+
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width: number;
+        height: number;
+        crossOrigin = "";
+        src = "";
+
+        constructor() {
+          imageCallCount++;
+          if (imageCallCount === 1) {
+            this.width = 1000;
+            this.height = 800;
+          } else {
+            this.width = 100;
+            this.height = 50;
+          }
           setTimeout(() => {
-            if (mockMainImage.onload) mockMainImage.onload();
+            if (this.onload) this.onload();
           }, 0);
-          return mockMainImage as unknown as HTMLImageElement;
-        } else {
-          setTimeout(() => {
-            if (mockLogoImage.onload) mockLogoImage.onload();
-          }, 0);
-          return mockLogoImage as unknown as HTMLImageElement;
         }
-      });
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       const result = await applyWatermark(file, settings);
 
       expect(result).toBeInstanceOf(File);
+
+      vi.unstubAllGlobals();
     });
 
     it("should reject if image fails to load", async () => {
@@ -183,20 +182,23 @@ describe("watermark", () => {
         enabled: true,
       };
 
-      const mockImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        src: "",
-      };
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        src = "";
 
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        setTimeout(() => {
-          if (mockImage.onerror) mockImage.onerror();
-        }, 0);
-        return mockImage as unknown as HTMLImageElement;
-      });
+        constructor() {
+          setTimeout(() => {
+            if (this.onerror) this.onerror();
+          }, 0);
+        }
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       await expect(applyWatermark(file, settings)).rejects.toThrow("Failed to load image");
+
+      vi.unstubAllGlobals();
     });
 
     it("should reject if canvas context is null", async () => {
@@ -208,22 +210,25 @@ describe("watermark", () => {
 
       mockCanvas.getContext = vi.fn(() => null);
 
-      const mockImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 1000,
-        height: 800,
-        src: "",
-      };
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 1000;
+        height = 800;
+        src = "";
 
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        setTimeout(() => {
-          if (mockImage.onload) mockImage.onload();
-        }, 0);
-        return mockImage as unknown as HTMLImageElement;
-      });
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       await expect(applyWatermark(file, settings)).rejects.toThrow("Could not get canvas context");
+
+      vi.unstubAllGlobals();
     });
 
     it("should reject if blob creation fails", async () => {
@@ -237,22 +242,25 @@ describe("watermark", () => {
         callback(null);
       });
 
-      const mockImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 1000,
-        height: 800,
-        src: "",
-      };
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 1000;
+        height = 800;
+        src = "";
 
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        setTimeout(() => {
-          if (mockImage.onload) mockImage.onload();
-        }, 0);
-        return mockImage as unknown as HTMLImageElement;
-      });
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       await expect(applyWatermark(file, settings)).rejects.toThrow("Failed to create blob");
+
+      vi.unstubAllGlobals();
     });
 
     it("should reject if logo fails to load", async () => {
@@ -265,29 +273,32 @@ describe("watermark", () => {
       };
 
       let imageCallCount = 0;
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        imageCallCount++;
-        const img = {
-          onload: null as (() => void) | null,
-          onerror: null as (() => void) | null,
-          width: 1000,
-          height: 800,
-          crossOrigin: "",
-          src: "",
-        };
 
-        setTimeout(() => {
-          if (imageCallCount === 1) {
-            if (img.onload) img.onload();
-          } else {
-            if (img.onerror) img.onerror();
-          }
-        }, 0);
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 1000;
+        height = 800;
+        crossOrigin = "";
+        src = "";
 
-        return img as unknown as HTMLImageElement;
-      });
+        constructor() {
+          imageCallCount++;
+          setTimeout(() => {
+            if (imageCallCount === 1) {
+              if (this.onload) this.onload();
+            } else {
+              if (this.onerror) this.onerror();
+            }
+          }, 0);
+        }
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       await expect(applyWatermark(file, settings)).rejects.toThrow("Failed to load logo");
+
+      vi.unstubAllGlobals();
     });
 
     it("should not apply logo if logoUrl is null", async () => {
@@ -299,25 +310,28 @@ describe("watermark", () => {
         logoUrl: null,
       };
 
-      const mockImage = {
-        onload: null as (() => void) | null,
-        onerror: null as (() => void) | null,
-        width: 1000,
-        height: 800,
-        src: "",
-      };
+      class MockImage {
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        width = 1000;
+        height = 800;
+        src = "";
 
-      vi.spyOn(window, "Image").mockImplementation(() => {
-        setTimeout(() => {
-          if (mockImage.onload) mockImage.onload();
-        }, 0);
-        return mockImage as unknown as HTMLImageElement;
-      });
+        constructor() {
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+      }
+
+      vi.stubGlobal("Image", MockImage);
 
       const result = await applyWatermark(file, settings);
 
       expect(result).toBeInstanceOf(File);
       expect(mockCtx.drawImage).toHaveBeenCalledTimes(1); // Only main image, no logo
+
+      vi.unstubAllGlobals();
     });
 
     it("should handle different positions", async () => {
@@ -335,23 +349,26 @@ describe("watermark", () => {
           position,
         };
 
-        const mockImage = {
-          onload: null as (() => void) | null,
-          onerror: null as (() => void) | null,
-          width: 1000,
-          height: 800,
-          src: "",
-        };
+        class MockImage {
+          onload: (() => void) | null = null;
+          onerror: (() => void) | null = null;
+          width = 1000;
+          height = 800;
+          src = "";
 
-        vi.spyOn(window, "Image").mockImplementation(() => {
-          setTimeout(() => {
-            if (mockImage.onload) mockImage.onload();
-          }, 0);
-          return mockImage as unknown as HTMLImageElement;
-        });
+          constructor() {
+            setTimeout(() => {
+              if (this.onload) this.onload();
+            }, 0);
+          }
+        }
+
+        vi.stubGlobal("Image", MockImage);
 
         const result = await applyWatermark(file, settings);
         expect(result).toBeInstanceOf(File);
+
+        vi.unstubAllGlobals();
       }
     });
 
@@ -366,23 +383,78 @@ describe("watermark", () => {
           size,
         };
 
-        const mockImage = {
-          onload: null as (() => void) | null,
-          onerror: null as (() => void) | null,
-          width: 1000,
-          height: 800,
-          src: "",
-        };
+        class MockImage {
+          onload: (() => void) | null = null;
+          onerror: (() => void) | null = null;
+          width = 1000;
+          height = 800;
+          src = "";
 
-        vi.spyOn(window, "Image").mockImplementation(() => {
-          setTimeout(() => {
-            if (mockImage.onload) mockImage.onload();
-          }, 0);
-          return mockImage as unknown as HTMLImageElement;
-        });
+          constructor() {
+            setTimeout(() => {
+              if (this.onload) this.onload();
+            }, 0);
+          }
+        }
+
+        vi.stubGlobal("Image", MockImage);
 
         const result = await applyWatermark(file, settings);
         expect(result).toBeInstanceOf(File);
+
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("should handle logo watermark with different positions", async () => {
+      const positions: WatermarkPosition[] = [
+        "top-left", "top-center", "top-right",
+        "center-left", "center", "center-right",
+        "bottom-left", "bottom-center", "bottom-right",
+      ];
+
+      for (const position of positions) {
+        let imageCallCount = 0;
+
+        class MockImage {
+          onload: (() => void) | null = null;
+          onerror: (() => void) | null = null;
+          width: number;
+          height: number;
+          crossOrigin = "";
+          src = "";
+
+          constructor() {
+            imageCallCount++;
+            if (imageCallCount % 2 === 1) {
+              this.width = 1000;
+              this.height = 800;
+            } else {
+              this.width = 100;
+              this.height = 50;
+            }
+            setTimeout(() => {
+              if (this.onload) this.onload();
+            }, 0);
+          }
+        }
+
+        vi.stubGlobal("Image", MockImage);
+
+        const file = new File(["test"], "photo.jpg", { type: "image/jpeg" });
+        const settings: WatermarkSettings = {
+          ...defaultWatermarkSettings,
+          enabled: true,
+          type: "logo",
+          logoUrl: "https://example.com/logo.png",
+          position,
+        };
+
+        const result = await applyWatermark(file, settings);
+        expect(result).toBeInstanceOf(File);
+
+        vi.unstubAllGlobals();
+        imageCallCount = 0;
       }
     });
   });

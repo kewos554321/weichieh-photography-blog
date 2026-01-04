@@ -85,7 +85,6 @@ export async function uploadBatchImages(
 
   // 2. 並行上傳所有檔案
   let uploadedCount = 0;
-  const publicUrls: string[] = [];
 
   const uploadPromises = data.uploads.map(async (uploadInfo, index) => {
     const file = files[index];
@@ -159,7 +158,7 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
 export function validateImageFiles(files: File[]): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  files.forEach((file, index) => {
+  files.forEach((file) => {
     const result = validateImageFile(file);
     if (!result.valid) {
       errors.push(`${file.name}: ${result.error}`);

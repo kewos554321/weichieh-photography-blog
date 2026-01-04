@@ -192,7 +192,7 @@ export function MediaLibraryContent({
     fetchMedia(1, true);
   };
 
-  const handleEditComplete = (_updatedMedia: Media) => {
+  const handleEditComplete = () => {
     setEditingMedia(null);
     // Refresh to get the new/updated media
     fetchMedia(1, true);

@@ -21,6 +21,11 @@ interface UploadOptions {
 // Cache watermark settings for the session
 let cachedWatermarkSettings: WatermarkSettings | null = null;
 
+// For testing purposes only
+export function resetWatermarkCache() {
+  cachedWatermarkSettings = null;
+}
+
 async function getWatermarkSettings(): Promise<WatermarkSettings | null> {
   if (cachedWatermarkSettings) return cachedWatermarkSettings;
 
@@ -158,7 +163,6 @@ export function useUpload() {
       setProgress(10);
 
       // 2. 並行上傳所有檔案
-      const results: BatchUploadResult[] = [];
       let completed = 0;
 
       const uploadPromises = uploads.map(
