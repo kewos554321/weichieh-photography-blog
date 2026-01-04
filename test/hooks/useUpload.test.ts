@@ -1,5 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
+
+// Mock watermark module
+const mockApplyWatermark = vi.fn();
+vi.mock("@/lib/watermark", () => ({
+  applyWatermark: (...args: unknown[]) => mockApplyWatermark(...args),
+  defaultWatermarkSettings: {
+    enabled: false,
+    type: "text",
+    text: "© Test",
+    logoUrl: null,
+    position: "bottom-right",
+    opacity: 30,
+    size: "medium",
+    padding: 20,
+  },
+}));
+
 import { useUpload } from "@/hooks/useUpload";
 
 describe("useUpload", () => {
@@ -326,6 +343,228 @@ describe("useUpload", () => {
       });
 
       expect(result.current.error).toBe("Batch upload failed");
+    });
+  });
+
+  describe("watermark functionality", () => {
+    it("should apply watermark when option is enabled and settings are enabled", async () => {
+      const watermarkedFile = new File(["watermarked"], "test.jpg", { type: "image/jpeg" });
+      mockApplyWatermark.mockResolvedValueOnce(watermarkedFile);
+
+      const mockPresignResponse = {
+        presignedUrl: "https://r2.test.com/upload",
+        publicUrl: "https://r2.dev/photos/test.jpg",
+        key: "photos/test.jpg",
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ enabled: true, text: "© Test" }),
+        })
+        // Presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPresignResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.upload(file, "photos", { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).toHaveBeenCalled();
+    });
+
+    it("should not apply watermark for articles folder", async () => {
+      const mockPresignResponse = {
+        presignedUrl: "https://r2.test.com/upload",
+        publicUrl: "https://r2.dev/articles/test.jpg",
+        key: "articles/test.jpg",
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPresignResponse),
+        })
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.upload(file, "articles", { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).not.toHaveBeenCalled();
+    });
+
+    it("should not apply watermark when settings are disabled", async () => {
+      const mockPresignResponse = {
+        presignedUrl: "https://r2.test.com/upload",
+        publicUrl: "https://r2.dev/photos/test.jpg",
+        key: "photos/test.jpg",
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch - disabled
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ enabled: false }),
+        })
+        // Presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPresignResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.upload(file, "photos", { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).not.toHaveBeenCalled();
+    });
+
+    it("should handle watermark settings fetch failure", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const mockPresignResponse = {
+        presignedUrl: "https://r2.test.com/upload",
+        publicUrl: "https://r2.dev/photos/test.jpg",
+        key: "photos/test.jpg",
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch - fails
+        .mockRejectedValueOnce(new Error("Network error"))
+        // Presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPresignResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.upload(file, "photos", { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith("Failed to fetch watermark settings");
+      consoleSpy.mockRestore();
+    });
+
+    it("should handle non-ok watermark settings response", async () => {
+      const mockPresignResponse = {
+        presignedUrl: "https://r2.test.com/upload",
+        publicUrl: "https://r2.dev/photos/test.jpg",
+        key: "photos/test.jpg",
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch - non-ok
+        .mockResolvedValueOnce({
+          ok: false,
+        })
+        // Presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPresignResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+
+      await act(async () => {
+        await result.current.upload(file, "photos", { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).not.toHaveBeenCalled();
+    });
+
+    it("should apply watermark in batch upload", async () => {
+      const watermarkedFile = new File(["watermarked"], "test.jpg", { type: "image/jpeg" });
+      mockApplyWatermark.mockResolvedValue(watermarkedFile);
+
+      const mockBatchResponse = {
+        uploads: [
+          { presignedUrl: "https://r2.test.com/1", publicUrl: "https://r2.dev/1.jpg", key: "photos/1.jpg", filename: "1.jpg" },
+        ],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ enabled: true, text: "© Test" }),
+        })
+        // Batch presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBatchResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.jpg", { type: "image/jpeg" })];
+
+      await act(async () => {
+        await result.current.uploadBatch(files, "photos", undefined, { applyWatermark: true });
+      });
+
+      expect(mockApplyWatermark).toHaveBeenCalled();
+    });
+
+    it("should not apply watermark for non-image files in batch", async () => {
+      const watermarkedFile = new File(["watermarked"], "test.jpg", { type: "image/jpeg" });
+      mockApplyWatermark.mockResolvedValue(watermarkedFile);
+
+      const mockBatchResponse = {
+        uploads: [
+          { presignedUrl: "https://r2.test.com/1", publicUrl: "https://r2.dev/1.pdf", key: "photos/1.pdf", filename: "1.pdf" },
+        ],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>)
+        // Watermark settings fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ enabled: true, text: "© Test" }),
+        })
+        // Batch presign fetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBatchResponse),
+        })
+        // Upload fetch
+        .mockResolvedValueOnce({ ok: true });
+
+      const { result } = renderHook(() => useUpload());
+      const files = [new File(["test"], "test.pdf", { type: "application/pdf" })];
+
+      await act(async () => {
+        await result.current.uploadBatch(files, "photos", undefined, { applyWatermark: true });
+      });
+
+      // applyWatermark should not be called for non-image files
+      expect(mockApplyWatermark).not.toHaveBeenCalled();
     });
   });
 });

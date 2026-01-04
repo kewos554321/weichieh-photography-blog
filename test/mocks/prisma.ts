@@ -55,6 +55,35 @@ export const mockPrisma = {
     findUnique: vi.fn(),
     upsert: vi.fn(),
   },
+  album: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  albumPhoto: {
+    findMany: vi.fn(),
+    createMany: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  comment: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  like: {
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+  },
+  $transaction: vi.fn(),
 };
 
 export function resetMocks() {
