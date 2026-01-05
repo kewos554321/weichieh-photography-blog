@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
+import { Maximize2, X, Search, Loader2 } from "lucide-react";
 
 // Dynamically import map component to avoid SSR issues
 const MapContainer = dynamic(
@@ -23,6 +24,26 @@ const Popup = dynamic(
   { ssr: false }
 );
 
+// Component to control map view programmatically
+const MapController = dynamic(
+  () => Promise.all([
+    import("react-leaflet"),
+    import("react")
+  ]).then(([mod, ReactMod]) => {
+    const { useMap } = mod;
+    return function MapControllerComponent({ center, zoom }: { center: [number, number] | null; zoom: number }) {
+      const map = useMap();
+      ReactMod.useEffect(() => {
+        if (center) {
+          map.setView(center, zoom);
+        }
+      }, [map, center, zoom]);
+      return null;
+    };
+  }),
+  { ssr: false }
+) as React.ComponentType<{ center: [number, number] | null; zoom: number }>;
+
 interface Photo {
   id: number;
   slug: string;
@@ -40,6 +61,84 @@ export default function MapPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [_selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchCenter, setSearchCenter] = useState<[number, number] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  // Get unique categories from photos
+  const categories = ["all", ...Array.from(new Set(photos.map(p => p.category).filter(Boolean)))];
+
+  // Filter photos by category
+  const filteredPhotos = selectedCategory === "all"
+    ? photos
+    : photos.filter(p => p.category === selectedCategory);
+
+  // Handle location search
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`,
+        {
+          headers: { "User-Agent": "WeiChieh-Photography-Blog" },
+          signal: controller.signal
+        }
+      );
+      clearTimeout(timeoutId);
+
+      const data = await res.json();
+      if (data[0]) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setSearchCenter([lat, lng]);
+      } else {
+        setSearchError("找不到此地點");
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setSearchError("搜尋逾時");
+      } else {
+        setSearchError("搜尋失敗");
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle keyboard events for fullscreen
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Escape" && isFullscreen) {
+      setIsFullscreen(false);
+    }
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Prevent body scroll when fullscreen is open
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
 
   useEffect(() => {
     // Load Leaflet CSS
@@ -121,7 +220,8 @@ export default function MapPage() {
       </div>
 
       {/* Map Container */}
-      <div className="relative h-[60vh] md:h-[70vh] mx-4 md:mx-6 mb-8 rounded-lg overflow-hidden shadow-lg">
+      <div className="relative h-[45vh] md:h-[50vh] max-w-7xl mx-auto px-4 md:px-6 mb-8">
+        <div className="relative h-full rounded-lg overflow-hidden shadow-lg">
         {/* Soft overlay for cartoon effect */}
         <style jsx global>{`
           .leaflet-tile {
@@ -209,7 +309,160 @@ export default function MapPage() {
             <span className="font-medium text-[#6b9e9a]">{photos.length}</span> photos on map
           </span>
         </div>
+
+        {/* Fullscreen button */}
+        <button
+          onClick={() => setIsFullscreen(true)}
+          className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-sm hover:bg-white transition-colors group"
+          aria-label="View fullscreen map"
+        >
+          <Maximize2 className="w-5 h-5 text-stone-500 group-hover:text-[#6b9e9a] transition-colors" />
+        </button>
+        </div>
       </div>
+
+      {/* Fullscreen Map Modal */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-[1100] bg-black/95 flex flex-col">
+          {/* Top bar - all controls in one row */}
+          <div className="flex items-center gap-3 p-3 shrink-0 bg-black/50 backdrop-blur-sm">
+            {/* Photo count */}
+            <div className="px-3 py-1.5 bg-white/10 rounded-full text-white/80 text-sm whitespace-nowrap">
+              <span className="font-medium">{filteredPhotos.length}</span> photos
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex gap-1.5 flex-wrap">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-2.5 py-1 rounded-full text-xs transition-colors whitespace-nowrap ${
+                    selectedCategory === cat
+                      ? "bg-[#6b9e9a] text-white"
+                      : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+                  }`}
+                >
+                  {cat === "all" ? "All" : cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Spacer */}
+            <div className="flex-1" />
+
+            {/* Location Search */}
+            <div className="flex gap-2 items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder="搜尋地點..."
+                  className="w-40 md:w-56 pl-9 pr-3 py-1.5 bg-white/10 border border-white/20 rounded-full text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-white/30"
+                  disabled={isSearching}
+                />
+              </div>
+              <button
+                onClick={handleSearch}
+                disabled={isSearching}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : "搜尋"}
+              </button>
+              {searchError && (
+                <span className="text-xs text-red-400 hidden md:inline">{searchError}</span>
+              )}
+            </div>
+
+            {/* Close button */}
+            <button
+              className="w-9 h-9 flex items-center justify-center text-white/70 hover:text-white transition-colors ml-2"
+              onClick={() => setIsFullscreen(false)}
+              aria-label="Close fullscreen"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Fullscreen Map */}
+          <div className="flex-1 relative min-h-0">
+            <style jsx global>{`
+              .fullscreen-map .leaflet-tile {
+                filter: saturate(0.7) brightness(1.08) contrast(0.85) sepia(0.1);
+              }
+              .fullscreen-map .leaflet-container {
+                background: #1a1a1a;
+              }
+            `}</style>
+            <MapContainer
+              center={getMapCenter()}
+              zoom={photos.length > 0 ? 5 : 3}
+              className="h-full w-full fullscreen-map"
+              scrollWheelZoom={true}
+            >
+              <MapController center={searchCenter} zoom={12} />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {filteredPhotos.map((photo) => (
+                <Marker
+                  key={photo.id}
+                  position={[photo.latitude!, photo.longitude!]}
+                  eventHandlers={{
+                    click: () => setSelectedPhoto(photo),
+                  }}
+                >
+                  <Popup>
+                    <div>
+                      <div className="relative w-full h-[140px] overflow-hidden">
+                        <Image
+                          src={photo.src}
+                          alt={photo.title}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="p-3">
+                        <p className="text-xs text-[#6b9e9a] uppercase tracking-wider mb-1">
+                          {photo.category}
+                        </p>
+                        <h3 className="font-serif text-stone-800 text-base mb-1">
+                          {photo.title}
+                        </h3>
+                        <p className="text-xs text-stone-500 mb-2">
+                          {photo.location}
+                        </p>
+                        <Link
+                          href={`/photo/${photo.slug}`}
+                          className="inline-block text-xs text-[#6b9e9a] hover:underline"
+                        >
+                          View Photo →
+                        </Link>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            </MapContainer>
+          </div>
+
+          {/* Bottom bar - keyboard hints */}
+          <div className="shrink-0 p-4 border-t border-white/10">
+            <div className="max-w-4xl mx-auto flex items-center justify-center">
+              <div className="hidden md:flex text-white/50 text-xs items-center gap-4">
+                <span className="flex items-center gap-2">
+                  <kbd className="px-2 py-0.5 bg-white/10 rounded">Esc</kbd>
+                  <span>Close</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {photos.length === 0 && (
