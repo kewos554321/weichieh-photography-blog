@@ -9,8 +9,11 @@ import {
   X,
   ImageIcon,
   FolderOpen,
+  FolderPlus,
   LayoutGrid,
   List,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
@@ -23,6 +26,8 @@ import { MediaListItem } from "./MediaListItem";
 
 type ViewMode = "grid" | "list";
 type GridSize = "small" | "medium" | "large";
+type SortField = "filename" | "size" | "createdAt" | "folder";
+type SortDirection = "asc" | "desc";
 
 const GRID_CLASSES: Record<GridSize, string> = {
   small: "grid-cols-3 md:grid-cols-5 lg:grid-cols-8",
@@ -53,9 +58,15 @@ export function MediaLibraryContent({
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [selectedFolder, setSelectedFolder] = useState<string>("");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [gridSize, setGridSize] = useState<GridSize>("medium");
+  const [compactMode, setCompactMode] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploader, setShowUploader] = useState(false);
+  const [showFolderForm, setShowFolderForm] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
   // For external picker selection
@@ -245,6 +256,30 @@ export function MediaLibraryContent({
     fetchMedia(1, true);
   };
 
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    setIsCreatingFolder(true);
+    try {
+      const res = await fetch("/api/media/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newFolderName.trim() }),
+      });
+      if (res.ok) {
+        setNewFolderName("");
+        setShowFolderForm(false);
+        fetchFolders();
+      } else {
+        const data = await res.json();
+        alert(data.error || "建立資料夾失敗");
+      }
+    } catch {
+      alert("建立資料夾失敗");
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
   // Bulk action handlers
   const handleBulkDelete = async () => {
     if (bulkSelectedCount === 0) return;
@@ -311,19 +346,120 @@ export function MediaLibraryContent({
     },
   ];
 
+  // Sort media
+  const sortedMedia = [...media].sort((a, b) => {
+    let comparison = 0;
+    switch (sortField) {
+      case "filename":
+        comparison = a.filename.localeCompare(b.filename);
+        break;
+      case "size":
+        comparison = a.size - b.size;
+        break;
+      case "createdAt":
+        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        break;
+      case "folder":
+        const aFolder = a.folder?.name || "";
+        const bFolder = b.folder?.name || "";
+        comparison = aFolder.localeCompare(bFolder);
+        break;
+    }
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-4 h-4" />
+    ) : (
+      <ChevronDown className="w-4 h-4" />
+    );
+  };
+
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Header - only show when not in picker mode */}
+      {!selectable && (
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-stone-900">Media</h1>
+          <div className="flex items-center gap-2">
+            {showFolderForm ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Folder name..."
+                  className="px-3 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-40"
+                  onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                  autoFocus
+                />
+                <button
+                  onClick={handleCreateFolder}
+                  disabled={isCreatingFolder || !newFolderName.trim()}
+                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50"
+                  title="Create"
+                >
+                  {isCreatingFolder ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FolderPlus className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowFolderForm(false);
+                    setNewFolderName("");
+                  }}
+                  className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg transition-colors"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowFolderForm(true)}
+                  className="p-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
+                  title="New Folder"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowUploader(true)}
+                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
+                  title="Upload"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="flex flex-wrap gap-3 items-center">
         {/* Search */}
-        <div className="flex-1 min-w-[200px] relative">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="搜尋檔名或描述..."
-            className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+            placeholder="Search media..."
+            className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64 bg-white"
           />
           {search && (
             <button
@@ -341,10 +477,10 @@ export function MediaLibraryContent({
           <select
             value={selectedFolder}
             onChange={(e) => setSelectedFolder(e.target.value)}
-            className="pl-10 pr-8 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+            className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
           >
-            <option value="">所有資料夾</option>
-            <option value="none">未分類</option>
+            <option value="">All Folders</option>
+            <option value="none">Uncategorized</option>
             {folders.map((folder) => (
               <option key={folder.id} value={folder.id.toString()}>
                 {folder.name} ({folder._count?.media || 0})
@@ -359,9 +495,9 @@ export function MediaLibraryContent({
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className="pl-10 pr-8 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+            className="pl-10 pr-8 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
           >
-            <option value="">所有標籤</option>
+            <option value="">All Tags</option>
             {tags.map((tag) => (
               <option key={tag.id} value={tag.name}>
                 {tag.name} ({tag._count?.media || 0})
@@ -371,7 +507,7 @@ export function MediaLibraryContent({
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden">
+        <div className="flex items-center border border-stone-300 rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode("grid")}
             className={`p-2 transition-colors ${
@@ -379,7 +515,7 @@ export function MediaLibraryContent({
                 ? "bg-stone-900 text-white"
                 : "bg-white text-stone-500 hover:text-stone-700"
             }`}
-            title="網格視圖"
+            title="Grid view"
           >
             <LayoutGrid className="w-4 h-4" />
           </button>
@@ -390,52 +526,69 @@ export function MediaLibraryContent({
                 ? "bg-stone-900 text-white"
                 : "bg-white text-stone-500 hover:text-stone-700"
             }`}
-            title="列表視圖"
+            title="List view"
           >
             <List className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Grid Size Toggle (only visible in grid mode) */}
-        {viewMode === "grid" && (
-          <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden">
-            {(["small", "medium", "large"] as GridSize[]).map((size) => (
+          {/* Grid Size Toggle (only visible in grid mode) */}
+          {viewMode === "grid" && (
+            <>
+              <div className="w-px h-6 bg-stone-200" />
+              {(["small", "medium", "large"] as GridSize[]).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => setGridSize(size)}
+                  className={`px-2.5 py-2 text-xs font-medium transition-colors ${
+                    gridSize === size
+                      ? "bg-stone-900 text-white"
+                      : "bg-white text-stone-500 hover:text-stone-700"
+                  }`}
+                  title={size === "small" ? "Small" : size === "medium" ? "Medium" : "Large"}
+                >
+                  {size === "small" ? "S" : size === "medium" ? "M" : "L"}
+                </button>
+              ))}
+            </>
+          )}
+          {/* Compact Toggle (only visible in list mode) */}
+          {viewMode === "list" && (
+            <>
+              <div className="w-px h-6 bg-stone-200" />
               <button
-                key={size}
-                onClick={() => setGridSize(size)}
-                className={`px-3 py-2 text-xs font-medium transition-colors ${
-                  gridSize === size
+                onClick={() => setCompactMode(!compactMode)}
+                className={`px-2.5 py-2 text-xs font-medium transition-colors ${
+                  compactMode
                     ? "bg-stone-900 text-white"
                     : "bg-white text-stone-500 hover:text-stone-700"
                 }`}
-                title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
+                title="Compact mode (hide thumbnails)"
               >
-                {size === "small" ? "S" : size === "medium" ? "M" : "L"}
+                Compact
               </button>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </div>
 
-        {/* Upload Button */}
-        <button
-          onClick={() => setShowUploader(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          上傳
-        </button>
+        {/* Upload Button - only show in picker mode */}
+        {selectable && (
+          <button
+            onClick={() => setShowUploader(true)}
+            className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
+            title="Upload"
+          >
+            <Upload className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Bulk Action Bar (only show when not in picker/selectable mode) */}
       {!selectable && (
-        <div className="mb-4">
-          <BulkActionBar
-            selectedCount={bulkSelectedCount}
-            onClear={bulkClearSelection}
-            actions={bulkActions}
-            disabled={isBulkUpdating}
-          />
-        </div>
+        <BulkActionBar
+          selectedCount={bulkSelectedCount}
+          onClear={bulkClearSelection}
+          actions={bulkActions}
+          disabled={isBulkUpdating}
+        />
       )}
 
       {/* Grid */}
@@ -468,40 +621,88 @@ export function MediaLibraryContent({
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
-              {/* List Header */}
-              <div className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-stone-400 border-b border-stone-200">
-                {!selectable && (
-                  <div className="w-6 flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={bulkIsAllSelected}
-                      onChange={bulkToggleSelectAll}
-                      className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
-                    />
-                  </div>
-                )}
-                <div className="w-12 flex-shrink-0"></div>
-                <div className="flex-1 min-w-0">檔名</div>
-                <div className="w-20 text-right flex-shrink-0">大小</div>
-                <div className="hidden md:block w-28 text-right flex-shrink-0">尺寸</div>
-                <div className="hidden lg:block w-20 flex-shrink-0">資料夾</div>
-                <div className="hidden xl:block w-24 flex-shrink-0">日期</div>
-                <div className="w-24 text-right flex-shrink-0">操作</div>
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-stone-50 border-b border-stone-200">
+                    <tr>
+                      {!selectable && (
+                        <th className="px-4 py-3 text-left">
+                          <input
+                            type="checkbox"
+                            checked={bulkIsAllSelected}
+                            onChange={bulkToggleSelectAll}
+                            className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                          />
+                        </th>
+                      )}
+                      {!compactMode && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                          Thumbnail
+                        </th>
+                      )}
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        onClick={() => handleSort("filename")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Filename
+                          <SortIcon field="filename" />
+                        </div>
+                      </th>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        onClick={() => handleSort("size")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Size
+                          <SortIcon field="size" />
+                        </div>
+                      </th>
+                      <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                        Dimensions
+                      </th>
+                      <th
+                        className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        onClick={() => handleSort("folder")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Folder
+                          <SortIcon field="folder" />
+                        </div>
+                      </th>
+                      <th
+                        className="hidden xl:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        <div className="flex items-center gap-1">
+                          Date
+                          <SortIcon field="createdAt" />
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-200">
+                    {sortedMedia.map((item) => (
+                      <MediaListItem
+                        key={item.id}
+                        media={item}
+                        isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
+                        selectable={selectable}
+                        showCheckbox={!selectable}
+                        compactMode={compactMode}
+                        onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
+                        onEdit={() => setViewingMedia(item)}
+                        onEditImage={() => setEditingMedia(item)}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              {media.map((item) => (
-                <MediaListItem
-                  key={item.id}
-                  media={item}
-                  isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
-                  selectable={selectable}
-                  showCheckbox={!selectable}
-                  onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
-                  onEdit={() => setViewingMedia(item)}
-                  onEditImage={() => setEditingMedia(item)}
-                  onDelete={handleDelete}
-                />
-              ))}
             </div>
           )}
 

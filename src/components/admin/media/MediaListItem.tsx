@@ -9,6 +9,7 @@ interface MediaListItemProps {
   isSelected?: boolean;
   selectable?: boolean;
   showCheckbox?: boolean;
+  compactMode?: boolean;
   onSelect?: (media: Media) => void;
   onEdit?: (media: Media) => void;
   onEditImage?: (media: Media) => void;
@@ -36,12 +37,13 @@ export function MediaListItem({
   isSelected = false,
   selectable = false,
   showCheckbox = false,
+  compactMode = false,
   onSelect,
   onEdit,
   onEditImage,
   onDelete,
 }: MediaListItemProps) {
-  const handleClick = () => {
+  const handleRowClick = () => {
     if (selectable && onSelect) {
       onSelect(media);
     } else if (onEdit) {
@@ -49,143 +51,138 @@ export function MediaListItem({
     }
   };
 
-  const handleCheckboxClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onSelect) {
-      onSelect(media);
-    }
-  };
-
   return (
-    <div
-      className={`group flex items-center gap-3 px-3 py-2 bg-white rounded-lg border transition-all duration-200 cursor-pointer ${
-        isSelected
-          ? "border-stone-900 ring-2 ring-stone-900/20"
-          : "border-stone-100 hover:border-stone-300 hover:shadow-sm"
-      }`}
-      onClick={handleClick}
+    <tr
+      className={`hover:bg-stone-50 cursor-pointer ${isSelected ? "bg-stone-50" : ""}`}
+      onClick={handleRowClick}
     >
       {/* Checkbox for bulk selection */}
       {showCheckbox && (
-        <div className="w-6 flex-shrink-0" onClick={handleCheckboxClick}>
+        <td className="px-4 py-3">
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => {}}
+            onChange={() => onSelect?.(media)}
+            onClick={(e) => e.stopPropagation()}
             className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
           />
-        </div>
+        </td>
       )}
+
       {/* Thumbnail */}
-      <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-stone-100">
-        <Image
-          src={media.url}
-          alt={media.alt || media.filename}
-          fill
-          className="object-cover"
-          sizes="48px"
-        />
-        {selectable && isSelected && (
-          <div className="absolute inset-0 bg-stone-900/50 flex items-center justify-center">
-            <Check className="w-4 h-4 text-white" />
+      {!compactMode && (
+        <td className="px-4 py-3">
+          <div className="relative w-16 h-12 rounded overflow-hidden bg-stone-100">
+            <Image
+              src={media.url}
+              alt={media.alt || media.filename}
+              fill
+              className="object-cover"
+              sizes="64px"
+            />
+            {selectable && isSelected && (
+              <div className="absolute inset-0 bg-stone-900/50 flex items-center justify-center">
+                <Check className="w-4 h-4 text-white" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </td>
+      )}
 
       {/* Filename */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-stone-900 truncate" title={media.filename}>
+      <td className="px-4 py-3">
+        <div className="font-medium text-stone-900 max-w-xs truncate" title={media.filename}>
           {media.filename}
-        </p>
+        </div>
         {media.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-0.5">
             {media.tags.slice(0, 2).map((tag) => (
               <span
                 key={tag.id}
-                className="text-[10px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded"
+                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded"
               >
                 {tag.name}
               </span>
             ))}
             {media.tags.length > 2 && (
-              <span className="text-[10px] text-stone-400">+{media.tags.length - 2}</span>
+              <span className="text-xs text-stone-400">+{media.tags.length - 2}</span>
             )}
           </div>
         )}
-      </div>
+      </td>
 
       {/* Size */}
-      <div className="w-20 text-right flex-shrink-0">
-        <span className="text-sm text-stone-500">{formatFileSize(media.size)}</span>
-      </div>
+      <td className="px-4 py-3 text-sm text-stone-500">
+        {formatFileSize(media.size)}
+      </td>
 
       {/* Dimensions */}
-      <div className="hidden md:block w-28 text-right flex-shrink-0">
+      <td className="hidden md:table-cell px-4 py-3 text-sm text-stone-500">
         {media.width && media.height ? (
-          <span className="text-sm text-stone-500">
-            {media.width}×{media.height}
+          <span>{media.width}×{media.height}</span>
+        ) : (
+          <span className="text-stone-400">-</span>
+        )}
+      </td>
+
+      {/* Folder */}
+      <td className="hidden lg:table-cell px-4 py-3">
+        {media.folder ? (
+          <span className="flex items-center gap-1 text-sm text-stone-500">
+            <FolderOpen className="w-3 h-3" />
+            {media.folder.name}
           </span>
         ) : (
           <span className="text-sm text-stone-400">-</span>
         )}
-      </div>
-
-      {/* Folder */}
-      <div className="hidden lg:flex items-center gap-1 w-20 flex-shrink-0">
-        {media.folder ? (
-          <>
-            <FolderOpen className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-            <span className="text-sm text-stone-500 truncate">{media.folder.name}</span>
-          </>
-        ) : (
-          <span className="text-sm text-stone-400">未分類</span>
-        )}
-      </div>
+      </td>
 
       {/* Date */}
-      <div className="hidden xl:block w-24 flex-shrink-0">
-        <span className="text-sm text-stone-500">{formatDate(media.createdAt)}</span>
-      </div>
+      <td className="hidden xl:table-cell px-4 py-3 text-sm text-stone-500">
+        {formatDate(media.createdAt)}
+      </td>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 w-24 justify-end flex-shrink-0">
-        {onEdit && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(media);
-            }}
-            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
-            title="編輯資訊"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-        )}
-        {onEditImage && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onEditImage(media);
-            }}
-            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
-            title="修圖"
-          >
-            <Sliders className="w-4 h-4" />
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(media);
-            }}
-            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="刪除"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </div>
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-2">
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(media);
+              }}
+              className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
+              title="編輯資訊"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+          )}
+          {onEditImage && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditImage(media);
+              }}
+              className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
+              title="修圖"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(media);
+              }}
+              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+              title="刪除"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }
