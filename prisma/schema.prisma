@@ -122,22 +122,38 @@ model SiteSettings {
 }
 
 model Media {
-  id        Int        @id @default(autoincrement())
+  id        Int          @id @default(autoincrement())
   filename  String
-  url       String     @unique
-  key       String     @unique
+  url       String       @unique
+  key       String       @unique
   mimeType  String
   size      Int
   width     Int?
   height    Int?
   alt       String?
   tags      MediaTag[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  folder    MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folderId  Int?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@index([filename])
   @@index([mimeType])
   @@index([createdAt])
+  @@index([folderId])
+}
+
+model MediaFolder {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  media     Media[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([sortOrder])
 }
 
 model MediaTag {

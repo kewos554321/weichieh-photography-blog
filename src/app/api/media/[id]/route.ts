@@ -26,7 +26,7 @@ export async function GET(
 
     const media = await prisma.media.findUnique({
       where: { id: mediaId },
-      include: { tags: true },
+      include: { tags: true, folder: true },
     });
 
     if (!media) {
@@ -85,7 +85,7 @@ export async function PUT(
       return NextResponse.json({ error: "Media not found" }, { status: 404 });
     }
 
-    const { alt, tagIds } = body;
+    const { alt, tagIds, folderId } = body;
 
     const media = await prisma.media.update({
       where: { id: mediaId },
@@ -96,8 +96,9 @@ export async function PUT(
             set: tagIds.map((tagId: number) => ({ id: tagId })),
           },
         }),
+        ...(folderId !== undefined && { folderId: folderId || null }),
       },
-      include: { tags: true },
+      include: { tags: true, folder: true },
     });
 
     return NextResponse.json(media);

@@ -8,12 +8,25 @@ import {
   Loader2,
   X,
   ImageIcon,
+  FolderOpen,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
 import { MediaEditor } from "./MediaEditor";
 import { MediaDetailModal } from "./MediaDetailModal";
-import type { Media, MediaTag, MediaListResponse } from "../types";
+import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
+import { MediaListItem } from "./MediaListItem";
+
+type ViewMode = "grid" | "list";
+type GridSize = "small" | "medium" | "large";
+
+const GRID_CLASSES: Record<GridSize, string> = {
+  small: "grid-cols-3 md:grid-cols-5 lg:grid-cols-8",
+  medium: "grid-cols-2 md:grid-cols-4 lg:grid-cols-6",
+  large: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+};
 
 interface MediaLibraryContentProps {
   selectable?: boolean;
@@ -30,12 +43,16 @@ export function MediaLibraryContent({
 }: MediaLibraryContentProps) {
   const [media, setMedia] = useState<Media[]>([]);
   const [tags, setTags] = useState<MediaTag[]>([]);
+  const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [gridSize, setGridSize] = useState<GridSize>("medium");
   const [showUploader, setShowUploader] = useState(false);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
@@ -62,6 +79,7 @@ export function MediaLibraryContent({
 
         if (search) params.set("search", search);
         if (selectedTag) params.set("tags", selectedTag);
+        if (selectedFolder) params.set("folderId", selectedFolder);
 
         const res = await fetch(`/api/media?${params}`);
         const data: MediaListResponse = await res.json();
@@ -80,7 +98,7 @@ export function MediaLibraryContent({
         setIsLoadingMore(false);
       }
     },
-    [search, selectedTag]
+    [search, selectedTag, selectedFolder]
   );
 
   const fetchTags = useCallback(async () => {
@@ -93,9 +111,20 @@ export function MediaLibraryContent({
     }
   }, []);
 
+  const fetchFolders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/media/folders");
+      const data = await res.json();
+      setFolders(data);
+    } catch (error) {
+      console.error("Failed to fetch folders:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTags();
-  }, [fetchTags]);
+    fetchFolders();
+  }, [fetchTags, fetchFolders]);
 
   useEffect(() => {
     fetchMedia(1, true);
@@ -116,7 +145,7 @@ export function MediaLibraryContent({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [search, selectedTag, fetchMedia]);
+  }, [search, selectedTag, selectedFolder, fetchMedia]);
 
   // Infinite scroll
   useEffect(() => {
@@ -222,6 +251,24 @@ export function MediaLibraryContent({
           )}
         </div>
 
+        {/* Folder Filter */}
+        <div className="relative">
+          <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <select
+            value={selectedFolder}
+            onChange={(e) => setSelectedFolder(e.target.value)}
+            className="pl-10 pr-8 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+          >
+            <option value="">所有資料夾</option>
+            <option value="none">未分類</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id.toString()}>
+                {folder.name} ({folder._count?.media || 0})
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Tag Filter */}
         <div className="relative">
           <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -238,6 +285,52 @@ export function MediaLibraryContent({
             ))}
           </select>
         </div>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`p-2 transition-colors ${
+              viewMode === "grid"
+                ? "bg-stone-900 text-white"
+                : "bg-white text-stone-500 hover:text-stone-700"
+            }`}
+            title="網格視圖"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={`p-2 transition-colors ${
+              viewMode === "list"
+                ? "bg-stone-900 text-white"
+                : "bg-white text-stone-500 hover:text-stone-700"
+            }`}
+            title="列表視圖"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Grid Size Toggle (only visible in grid mode) */}
+        {viewMode === "grid" && (
+          <div className="flex items-center border border-stone-200 rounded-lg overflow-hidden">
+            {(["small", "medium", "large"] as GridSize[]).map((size) => (
+              <button
+                key={size}
+                onClick={() => setGridSize(size)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${
+                  gridSize === size
+                    ? "bg-stone-900 text-white"
+                    : "bg-white text-stone-500 hover:text-stone-700"
+                }`}
+                title={size === "small" ? "小" : size === "medium" ? "中" : "大"}
+              >
+                {size === "small" ? "S" : size === "medium" ? "M" : "L"}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Upload Button */}
         <button
@@ -262,20 +355,47 @@ export function MediaLibraryContent({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {media.map((item) => (
-              <MediaCard
-                key={item.id}
-                media={item}
-                isSelected={selectedMedia.has(item.id)}
-                selectable={selectable}
-                onSelect={handleSelect}
-                onView={() => setViewingMedia(item)}
-                onEdit={() => setEditingMedia(item)}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          {viewMode === "grid" ? (
+            <div className={`grid ${GRID_CLASSES[gridSize]} gap-4`}>
+              {media.map((item) => (
+                <MediaCard
+                  key={item.id}
+                  media={item}
+                  isSelected={selectedMedia.has(item.id)}
+                  selectable={selectable}
+                  onSelect={handleSelect}
+                  onView={() => setViewingMedia(item)}
+                  onEdit={() => setEditingMedia(item)}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* List Header */}
+              <div className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-stone-400 border-b border-stone-200">
+                <div className="w-12 flex-shrink-0"></div>
+                <div className="flex-1 min-w-0">檔名</div>
+                <div className="w-20 text-right flex-shrink-0">大小</div>
+                <div className="hidden md:block w-28 text-right flex-shrink-0">尺寸</div>
+                <div className="hidden lg:block w-20 flex-shrink-0">資料夾</div>
+                <div className="hidden xl:block w-24 flex-shrink-0">日期</div>
+                <div className="w-24 text-right flex-shrink-0">操作</div>
+              </div>
+              {media.map((item) => (
+                <MediaListItem
+                  key={item.id}
+                  media={item}
+                  isSelected={selectedMedia.has(item.id)}
+                  selectable={selectable}
+                  onSelect={handleSelect}
+                  onView={() => setViewingMedia(item)}
+                  onEdit={() => setEditingMedia(item)}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Load More Trigger */}
           <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">

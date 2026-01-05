@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const tags = searchParams.get("tags");
     const mimeType = searchParams.get("mimeType");
+    const folderId = searchParams.get("folderId");
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -42,6 +43,14 @@ export async function GET(request: NextRequest) {
       where.mimeType = { startsWith: mimeType };
     }
 
+    if (folderId) {
+      if (folderId === "none") {
+        where.folderId = null;
+      } else {
+        where.folderId = parseInt(folderId);
+      }
+    }
+
     const skip = (page - 1) * limit;
 
     const [media, total] = await Promise.all([
@@ -52,6 +61,7 @@ export async function GET(request: NextRequest) {
         skip,
         include: {
           tags: true,
+          folder: true,
         },
       }),
       prisma.media.count({ where }),
@@ -77,7 +87,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { filename, contentType, size, width, height, alt, tagIds } = body;
+    const { filename, contentType, size, width, height, alt, tagIds, folderId } = body;
 
     if (!filename || !contentType) {
       return NextResponse.json(
@@ -119,9 +129,11 @@ export async function POST(request: NextRequest) {
             connect: tagIds.map((id: number) => ({ id })),
           },
         }),
+        ...(folderId && { folderId }),
       },
       include: {
         tags: true,
+        folder: true,
       },
     });
 
