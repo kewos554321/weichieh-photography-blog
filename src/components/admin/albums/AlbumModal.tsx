@@ -2,7 +2,19 @@
 
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { X, Loader2, Images, Plus, Trash2, Wand2 } from "lucide-react";
+import {
+  X,
+  Loader2,
+  Images,
+  Plus,
+  Trash2,
+  Wand2,
+  Globe,
+  Link2,
+  Lock,
+  Copy,
+  RefreshCw,
+} from "lucide-react";
 
 interface Photo {
   id: number;
@@ -17,7 +29,9 @@ interface Album {
   slug: string;
   description: string | null;
   coverUrl: string | null;
-  isPublic: boolean;
+  visibility?: string;
+  accessToken?: string;
+  tokenExpiresAt?: string;
   photos?: Photo[];
 }
 
@@ -40,7 +54,13 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
     slug: album?.slug || "",
     description: album?.description || "",
     coverUrl: album?.coverUrl || "",
-    isPublic: album?.isPublic !== false,
+    // 隱私控制欄位
+    visibility: album?.visibility || "public" as "public" | "unlisted" | "token" | "password",
+    accessToken: album?.accessToken || "",
+    tokenExpiresAt: album?.tokenExpiresAt
+      ? album.tokenExpiresAt.slice(0, 16)
+      : "",
+    accessPassword: "",  // 不顯示現有密碼
   });
 
   const [albumPhotos, setAlbumPhotos] = useState<Photo[]>(album?.photos || []);
@@ -101,6 +121,22 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
     }
   };
 
+  // 生成隨機 token
+  const handleGenerateToken = () => {
+    const token = crypto.randomUUID();
+    setFormData({ ...formData, accessToken: token });
+  };
+
+  // 複製分享連結
+  const handleCopyShareLink = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    let url = `${origin}/albums/${formData.slug}`;
+    if (formData.visibility === "token" && formData.accessToken) {
+      url += `?token=${formData.accessToken}`;
+    }
+    navigator.clipboard.writeText(url);
+  };
+
   const handleAddPhotos = async () => {
     if (selectedPhotos.size === 0) {
       setShowPhotoSelector(false);
@@ -131,6 +167,13 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
     setError(null);
 
     try {
+      // 如果設定了新密碼，需要先 hash
+      let hashedPassword: string | null = null;
+      if (formData.visibility === "password" && formData.accessPassword) {
+        const bcrypt = await import("bcryptjs");
+        hashedPassword = await bcrypt.hash(formData.accessPassword, 10);
+      }
+
       // Create or update album
       const url = isEditMode ? `/api/albums/${album.slug}` : "/api/albums";
       const method = isEditMode ? "PUT" : "POST";
@@ -139,8 +182,18 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description,
           coverUrl: formData.coverUrl || albumPhotos[0]?.src || null,
+          // 隱私控制欄位
+          visibility: formData.visibility,
+          accessToken: formData.visibility === "token" ? formData.accessToken : null,
+          tokenExpiresAt:
+            formData.visibility === "token" && formData.tokenExpiresAt
+              ? formData.tokenExpiresAt
+              : null,
+          accessPassword: hashedPassword,
         }),
       });
 
@@ -280,17 +333,201 @@ export function AlbumModal({ album, onClose, onSuccess }: AlbumModalProps) {
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPublic"
-              checked={formData.isPublic}
-              onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
-              className="rounded"
-            />
-            <label htmlFor="isPublic" className="text-sm text-stone-700">
-              Public album (visible to visitors)
+          {/* Visibility Settings */}
+          <div className="p-4 bg-blue-50 rounded-lg space-y-3">
+            <label className="block text-sm font-medium text-stone-700">
+              可見性設定
             </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="public"
+                  checked={formData.visibility === "public"}
+                  onChange={() =>
+                    setFormData({ ...formData, visibility: "public" })
+                  }
+                  className="text-blue-600"
+                />
+                <Globe className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-stone-700">公開</span>
+                <span className="text-xs text-stone-400">- 顯示在列表，所有人可見</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="unlisted"
+                  checked={formData.visibility === "unlisted"}
+                  onChange={() =>
+                    setFormData({ ...formData, visibility: "unlisted" })
+                  }
+                  className="text-blue-600"
+                />
+                <Link2 className="w-4 h-4 text-amber-600" />
+                <span className="text-sm text-stone-700">不公開列表</span>
+                <span className="text-xs text-stone-400">- 知道網址可訪問</span>
+              </label>
+              {formData.visibility === "unlisted" && formData.slug && (
+                <div className="ml-6 flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/albums/${formData.slug}`}
+                    className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyShareLink}
+                    className="p-1.5 bg-stone-200 hover:bg-stone-300 rounded text-stone-600"
+                    title="複製連結"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="token"
+                  checked={formData.visibility === "token"}
+                  onChange={() =>
+                    setFormData({ ...formData, visibility: "token" })
+                  }
+                  className="text-blue-600"
+                />
+                <Link2 className="w-4 h-4 text-purple-600" />
+                <span className="text-sm text-stone-700">專屬連結</span>
+                <span className="text-xs text-stone-400">- 需要特殊連結才能訪問</span>
+              </label>
+              {formData.visibility === "token" && (
+                <div className="ml-6 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.accessToken}
+                      onChange={(e) =>
+                        setFormData({ ...formData, accessToken: e.target.value })
+                      }
+                      placeholder="Token"
+                      className="flex-1 px-2 py-1 text-xs border border-stone-300 rounded"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleGenerateToken}
+                      className="p-1.5 bg-purple-100 hover:bg-purple-200 rounded text-purple-600"
+                      title="產生新 Token"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyShareLink}
+                      disabled={!formData.accessToken}
+                      className="p-1.5 bg-stone-200 hover:bg-stone-300 rounded text-stone-600 disabled:opacity-50"
+                      title="複製分享連結"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-stone-500">過期時間：</span>
+                    <select
+                      value={
+                        formData.tokenExpiresAt
+                          ? "custom"
+                          : "never"
+                      }
+                      onChange={(e) => {
+                        if (e.target.value === "never") {
+                          setFormData({ ...formData, tokenExpiresAt: "" });
+                        } else {
+                          const days = parseInt(e.target.value);
+                          if (!isNaN(days)) {
+                            const date = new Date();
+                            date.setDate(date.getDate() + days);
+                            setFormData({
+                              ...formData,
+                              tokenExpiresAt: date.toISOString().slice(0, 16),
+                            });
+                          }
+                        }
+                      }}
+                      className="px-2 py-1 text-xs border border-stone-300 rounded"
+                    >
+                      <option value="never">永不過期</option>
+                      <option value="1">1 天</option>
+                      <option value="7">7 天</option>
+                      <option value="30">30 天</option>
+                      <option value="custom">自訂</option>
+                    </select>
+                    {formData.tokenExpiresAt && (
+                      <input
+                        type="datetime-local"
+                        value={formData.tokenExpiresAt}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tokenExpiresAt: e.target.value })
+                        }
+                        className="px-2 py-1 text-xs border border-stone-300 rounded"
+                      />
+                    )}
+                  </div>
+                  {formData.accessToken && formData.slug && (
+                    <p className="text-xs text-purple-600 break-all">
+                      分享連結：{typeof window !== "undefined" ? window.location.origin : ""}/albums/{formData.slug}?token={formData.accessToken}
+                    </p>
+                  )}
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="password"
+                  checked={formData.visibility === "password"}
+                  onChange={() =>
+                    setFormData({ ...formData, visibility: "password" })
+                  }
+                  className="text-blue-600"
+                />
+                <Lock className="w-4 h-4 text-red-600" />
+                <span className="text-sm text-stone-700">密碼保護</span>
+                <span className="text-xs text-stone-400">- 需要輸入密碼才能查看</span>
+              </label>
+              {formData.visibility === "password" && (
+                <div className="ml-6 space-y-2">
+                  <input
+                    type="password"
+                    value={formData.accessPassword}
+                    onChange={(e) =>
+                      setFormData({ ...formData, accessPassword: e.target.value })
+                    }
+                    placeholder={isEditMode ? "輸入新密碼（留空則保持原密碼）" : "設定訪問密碼"}
+                    className="w-full px-2 py-1 text-sm border border-stone-300 rounded"
+                  />
+                  {formData.slug && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${typeof window !== "undefined" ? window.location.origin : ""}/albums/${formData.slug}`}
+                        className="flex-1 px-2 py-1 text-xs bg-white border border-stone-200 rounded"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyShareLink}
+                        className="p-1.5 bg-stone-200 hover:bg-stone-300 rounded text-stone-600"
+                        title="複製連結"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Photos */}

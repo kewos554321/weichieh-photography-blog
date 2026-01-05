@@ -29,6 +29,12 @@ model Photo {
   updatedAt      DateTime     @updatedAt
   tags           PhotoTag[]
 
+  // 隱私控制欄位
+  visibility     String       @default("public") // public | unlisted | token | password
+  accessToken    String?      @unique            // Token 模式的唯一存取碼
+  tokenExpiresAt DateTime?                       // Token 過期時間（可選）
+  accessPassword String?                         // 密碼模式的 bcrypt 雜湊
+
   // 關聯文章（點擊「閱讀完整故事」）
   article   Article? @relation(fields: [articleId], references: [id])
   articleId Int?
@@ -45,6 +51,7 @@ model Photo {
   @@index([articleId])
   @@index([viewCount])
   @@index([likeCount])
+  @@index([visibility])
 }
 
 model PhotoTag {
@@ -149,14 +156,19 @@ model Album {
   description String?      @db.Text
   coverUrl    String?
   sortOrder   Int          @default(0)
-  isPublic    Boolean      @default(true)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   photos      AlbumPhoto[]
 
+  // 隱私控制欄位
+  visibility     String    @default("public") // public | unlisted | token | password
+  accessToken    String?   @unique            // Token 模式的唯一存取碼
+  tokenExpiresAt DateTime?                    // Token 過期時間（可選）
+  accessPassword String?                      // 密碼模式的 bcrypt 雜湊
+
   @@index([slug])
-  @@index([isPublic])
   @@index([sortOrder])
+  @@index([visibility])
 }
 
 model AlbumPhoto {

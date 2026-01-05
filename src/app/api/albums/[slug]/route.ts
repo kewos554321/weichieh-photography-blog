@@ -12,6 +12,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
+    const token = searchParams.get("token");
 
     const album = await prisma.album.findUnique({
       where: { slug },
@@ -36,8 +37,53 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 非管理員不能看私人相簿
-    if (!admin && !album.isPublic) {
+    // 管理員可以看到所有內容
+    if (admin) {
+      const photos = album.photos.map((ap) => ap.photo);
+      return NextResponse.json({ ...album, photos });
+    }
+
+    // 根據 visibility 檢查存取權限
+    let hasAccess = false;
+
+    switch (album.visibility) {
+      case "public":
+      case "unlisted":
+        // public 和 unlisted 都可以直接訪問
+        hasAccess = true;
+        break;
+
+      case "token":
+        // 需要正確的 token
+        if (token && token === album.accessToken) {
+          // 檢查 token 是否過期
+          if (!album.tokenExpiresAt || album.tokenExpiresAt >= new Date()) {
+            hasAccess = true;
+          }
+        }
+        break;
+
+      case "password":
+        // 檢查 cookie 是否有密碼驗證記錄
+        const passwordCookie = request.cookies.get(`album_access_${album.id}`);
+        if (passwordCookie?.value === "verified") {
+          hasAccess = true;
+        } else {
+          // 回傳需要密碼的狀態（只回傳基本資訊）
+          return NextResponse.json(
+            {
+              requiresPassword: true,
+              id: album.id,
+              slug: album.slug,
+              name: album.name,
+            },
+            { status: 401 }
+          );
+        }
+        break;
+    }
+
+    if (!hasAccess) {
       return NextResponse.json(
         { error: "Album not found" },
         { status: 404 }
@@ -45,11 +91,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 過濾未發布的照片（非管理員）
-    const photos = admin
-      ? album.photos.map((ap) => ap.photo)
-      : album.photos
-          .filter((ap) => ap.photo.status === "published")
-          .map((ap) => ap.photo);
+    const photos = album.photos
+      .filter((ap) => ap.photo.status === "published")
+      .map((ap) => ap.photo);
 
     return NextResponse.json({
       ...album,
@@ -94,8 +138,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(newSlug && { slug: newSlug }),
         description: body.description !== undefined ? body.description : undefined,
         coverUrl: body.coverUrl !== undefined ? body.coverUrl : undefined,
-        isPublic: body.isPublic !== undefined ? body.isPublic : undefined,
         sortOrder: body.sortOrder,
+        // 隱私控制欄位
+        ...(body.visibility !== undefined && { visibility: body.visibility }),
+        ...(body.accessToken !== undefined && { accessToken: body.accessToken }),
+        ...(body.tokenExpiresAt !== undefined && {
+          tokenExpiresAt: body.tokenExpiresAt
+            ? new Date(body.tokenExpiresAt)
+            : null,
+        }),
+        ...(body.accessPassword !== undefined && {
+          accessPassword: body.accessPassword,
+        }),
       },
     });
 

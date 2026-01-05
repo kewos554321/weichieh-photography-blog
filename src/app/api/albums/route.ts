@@ -7,7 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
 
-    const where = admin ? {} : { isPublic: true };
+    // 只顯示 visibility = "public" 的相簿（不顯示 unlisted/token/password）
+    const where = admin ? {} : { visibility: "public" };
 
     const albums = await prisma.album.findMany({
       where,
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, slug, description, coverUrl, isPublic } = body;
+    const { name, slug, description, coverUrl } = body;
 
     if (!name || !slug) {
       return NextResponse.json(
@@ -85,8 +86,14 @@ export async function POST(request: NextRequest) {
         slug,
         description: description || null,
         coverUrl: coverUrl || null,
-        isPublic: isPublic !== false,
         sortOrder: (maxSort._max.sortOrder || 0) + 1,
+        // 隱私控制欄位
+        visibility: body.visibility || "public",
+        accessToken: body.accessToken || null,
+        tokenExpiresAt: body.tokenExpiresAt
+          ? new Date(body.tokenExpiresAt)
+          : null,
+        accessPassword: body.accessPassword || null,
       },
     });
 

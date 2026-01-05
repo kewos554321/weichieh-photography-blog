@@ -20,6 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
+    const token = searchParams.get("token");
 
     const photo = await prisma.photo.findUnique({
       where: { slug },
@@ -42,17 +43,57 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
-    // 非管理員只能查看已發佈且發佈時間已到的內容
-    if (!admin) {
-      const isPublished = photo.status === "published";
-      const isScheduleReady =
-        !photo.publishedAt || photo.publishedAt <= new Date();
-      if (!isPublished || !isScheduleReady) {
-        return NextResponse.json({ error: "Photo not found" }, { status: 404 });
-      }
+    // 管理員可以看到所有內容
+    if (admin) {
+      return NextResponse.json(photo);
     }
 
-    return NextResponse.json(photo);
+    // 非管理員只能查看已發佈且發佈時間已到的內容
+    const isPublished = photo.status === "published";
+    const isScheduleReady =
+      !photo.publishedAt || photo.publishedAt <= new Date();
+    if (!isPublished || !isScheduleReady) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+
+    // 根據 visibility 檢查存取權限
+    switch (photo.visibility) {
+      case "public":
+      case "unlisted":
+        // public 和 unlisted 都可以直接訪問
+        return NextResponse.json(photo);
+
+      case "token":
+        // 需要正確的 token
+        if (!token || token !== photo.accessToken) {
+          return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+        }
+        // 檢查 token 是否過期
+        if (photo.tokenExpiresAt && photo.tokenExpiresAt < new Date()) {
+          return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+        }
+        return NextResponse.json(photo);
+
+      case "password":
+        // 檢查 cookie 是否有密碼驗證記錄
+        const passwordCookie = request.cookies.get(`photo_access_${photo.id}`);
+        if (passwordCookie?.value === "verified") {
+          return NextResponse.json(photo);
+        }
+        // 回傳需要密碼的狀態（只回傳基本資訊）
+        return NextResponse.json(
+          {
+            requiresPassword: true,
+            id: photo.id,
+            slug: photo.slug,
+            title: photo.title,
+          },
+          { status: 401 }
+        );
+
+      default:
+        return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
   } catch (error) {
     console.error("Get photo error:", error);
     return NextResponse.json(
@@ -113,6 +154,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }),
         ...(body.articleId !== undefined && {
           articleId: body.articleId,
+        }),
+        // 隱私控制欄位
+        ...(body.visibility !== undefined && { visibility: body.visibility }),
+        ...(body.accessToken !== undefined && { accessToken: body.accessToken }),
+        ...(body.tokenExpiresAt !== undefined && {
+          tokenExpiresAt: body.tokenExpiresAt
+            ? new Date(body.tokenExpiresAt)
+            : null,
+        }),
+        ...(body.accessPassword !== undefined && {
+          accessPassword: body.accessPassword,
         }),
       },
       include: {

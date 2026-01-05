@@ -32,6 +32,8 @@ export async function GET(request: NextRequest) {
     } else if (!admin) {
       // 公開頁面只顯示已發佈且發佈時間已到的內容
       where.status = "published";
+      // 只顯示 visibility = "public" 的照片（不顯示 unlisted/token/password）
+      where.visibility = "public";
       where.AND = [
         {
           OR: [
@@ -105,6 +107,13 @@ export async function POST(request: NextRequest) {
         status: body.status || "draft",
         publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
         articleId: body.articleId || null,
+        // 隱私控制欄位
+        visibility: body.visibility || "public",
+        accessToken: body.accessToken || null,
+        tokenExpiresAt: body.tokenExpiresAt
+          ? new Date(body.tokenExpiresAt)
+          : null,
+        accessPassword: body.accessPassword || null,
         ...(body.tagIds && {
           tags: {
             connect: body.tagIds.map((id: number) => ({ id })),
