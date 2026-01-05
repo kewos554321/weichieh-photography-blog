@@ -68,7 +68,7 @@ export default function AlbumDetailPage({
 
   if (loading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
+      <div className="pt-14 md:pt-16 min-h-screen flex items-center justify-center">
         <div className="text-stone-400">Loading...</div>
       </div>
     );
@@ -76,7 +76,7 @@ export default function AlbumDetailPage({
 
   if (error || !album) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen flex flex-col items-center justify-center">
+      <div className="pt-14 md:pt-16 min-h-screen flex flex-col items-center justify-center">
         <p className="text-stone-400 mb-4">找不到此相簿</p>
         <Link
           href="/albums"
@@ -90,7 +90,7 @@ export default function AlbumDetailPage({
   }
 
   return (
-    <div className="pt-16 md:pt-20 min-h-screen">
+    <div className="pt-14 md:pt-16 min-h-screen">
       {/* Header */}
       <section className="py-12 md:py-16 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">

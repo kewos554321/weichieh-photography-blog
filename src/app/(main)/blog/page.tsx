@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/skeletons/Skeleton";
+import { BlurImage } from "@/components/BlurImage";
 
 interface Article {
   id: number;
@@ -42,7 +42,7 @@ export default function BlogPage() {
 
   if (loading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen page-transition">
+      <div className="pt-14 md:pt-16 min-h-screen page-transition">
         {/* Header Skeleton */}
         <section className="py-12 md:py-20 px-4 md:px-6">
           <div className="max-w-7xl mx-auto text-center space-y-4">
@@ -86,7 +86,7 @@ export default function BlogPage() {
   }
 
   return (
-    <div className="pt-16 md:pt-20">
+    <div className="pt-14 md:pt-16">
       {/* Page Header */}
       <section className="py-12 md:py-20 px-4 md:px-6">
         <div className="max-w-7xl mx-auto text-center">
@@ -124,11 +124,11 @@ export default function BlogPage() {
                 <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center">
                   {/* Image */}
                   <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
-                    <Image
+                    <BlurImage
                       src={featuredArticle.cover}
                       alt={featuredArticle.title}
                       fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      className="object-cover group-hover:scale-105"
                       priority
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-stone-900/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -191,11 +191,11 @@ export default function BlogPage() {
                     <Link href={`/blog/${article.slug}`} className="block">
                       {/* Image */}
                       <div className="relative aspect-[16/10] overflow-hidden rounded-sm mb-5">
-                        <Image
+                        <BlurImage
                           src={article.cover}
                           alt={article.title}
                           fill
-                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="object-cover group-hover:scale-105"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-stone-900/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         {/* Number Badge */}

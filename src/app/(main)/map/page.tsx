@@ -196,7 +196,7 @@ export default function MapPage() {
 
   if (isLoading || !isMapReady) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen">
+      <div className="pt-14 md:pt-16 min-h-screen">
         {/* Header Skeleton */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
           <Skeleton className="h-4 w-20 mb-3" />
@@ -225,7 +225,7 @@ export default function MapPage() {
   }
 
   return (
-    <div className="pt-16 md:pt-20 min-h-screen">
+    <div className="pt-14 md:pt-16 min-h-screen">
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
         <p className="text-xs tracking-[0.3em] uppercase text-[var(--accent-teal)] mb-3">

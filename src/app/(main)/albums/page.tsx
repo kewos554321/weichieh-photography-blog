@@ -32,7 +32,7 @@ export default function AlbumsPage() {
 
   if (loading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen">
+      <div className="pt-14 md:pt-16 min-h-screen">
         {/* Header Skeleton */}
         <section className="py-12 md:py-16 px-4 md:px-6">
           <div className="max-w-7xl mx-auto text-center space-y-4">
@@ -56,7 +56,7 @@ export default function AlbumsPage() {
   }
 
   return (
-    <div className="pt-16 md:pt-20 min-h-screen">
+    <div className="pt-14 md:pt-16 min-h-screen">
       {/* Header */}
       <section className="py-12 md:py-16 px-4 md:px-6">
         <div className="max-w-7xl mx-auto text-center">

@@ -110,7 +110,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
 
   if (isLoading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
+      <div className="pt-14 md:pt-16 min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
       </div>
     );
@@ -121,7 +121,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   }
 
   return (
-    <div className="pt-16 md:pt-20">
+    <div className="pt-14 md:pt-16">
       {/* Breadcrumb */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         <nav className="flex items-center gap-2 text-xs tracking-wider text-stone-400">
