@@ -59,6 +59,7 @@ describe("Photos [slug] API", () => {
         title: "Test Photo",
         status: "published",
         publishedAt: null,
+        visibility: "public",
         tags: [],
       };
       mockPrisma.photo.findUnique.mockResolvedValue(mockPhoto);

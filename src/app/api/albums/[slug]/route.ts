@@ -12,7 +12,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
-    const token = searchParams.get("token");
+
+    // 取得訪客 token
+    const visitorToken = request.cookies.get("visitor_token")?.value;
 
     const album = await prisma.album.findUnique({
       where: { slug },
@@ -46,41 +48,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // 根據 visibility 檢查存取權限
     let hasAccess = false;
 
-    switch (album.visibility) {
-      case "public":
-      case "unlisted":
-        // public 和 unlisted 都可以直接訪問
-        hasAccess = true;
-        break;
+    if (album.visibility === "public") {
+      hasAccess = true;
+    } else if (album.visibility === "private") {
+      // 檢查訪客 token 是否有權限
+      if (visitorToken) {
+        const accessToken = await prisma.accessToken.findUnique({
+          where: { token: visitorToken },
+          include: {
+            albums: { where: { albumId: album.id } },
+          },
+        });
 
-      case "token":
-        // 需要正確的 token
-        if (token && token === album.accessToken) {
-          // 檢查 token 是否過期
-          if (!album.tokenExpiresAt || album.tokenExpiresAt >= new Date()) {
-            hasAccess = true;
-          }
-        }
-        break;
-
-      case "password":
-        // 檢查 cookie 是否有密碼驗證記錄
-        const passwordCookie = request.cookies.get(`album_access_${album.id}`);
-        if (passwordCookie?.value === "verified") {
+        if (
+          accessToken?.isActive &&
+          accessToken.albums.length > 0 &&
+          (!accessToken.expiresAt || accessToken.expiresAt > new Date())
+        ) {
           hasAccess = true;
-        } else {
-          // 回傳需要密碼的狀態（只回傳基本資訊）
-          return NextResponse.json(
-            {
-              requiresPassword: true,
-              id: album.id,
-              slug: album.slug,
-              name: album.name,
-            },
-            { status: 401 }
-          );
         }
-        break;
+      }
     }
 
     if (!hasAccess) {
@@ -139,17 +126,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         description: body.description !== undefined ? body.description : undefined,
         coverUrl: body.coverUrl !== undefined ? body.coverUrl : undefined,
         sortOrder: body.sortOrder,
-        // 隱私控制欄位
+        // 隱私控制欄位（簡化版）
         ...(body.visibility !== undefined && { visibility: body.visibility }),
-        ...(body.accessToken !== undefined && { accessToken: body.accessToken }),
-        ...(body.tokenExpiresAt !== undefined && {
-          tokenExpiresAt: body.tokenExpiresAt
-            ? new Date(body.tokenExpiresAt)
-            : null,
-        }),
-        ...(body.accessPassword !== undefined && {
-          accessPassword: body.accessPassword,
-        }),
       },
     });
 

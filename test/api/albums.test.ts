@@ -20,7 +20,7 @@ describe("Albums API", () => {
           id: 1,
           slug: "album-1",
           name: "Album 1",
-          isPublic: true,
+          visibility: "public",
           photos: [{ photo: { id: 1, slug: "photo-1", src: "url", title: "Photo 1" } }],
           _count: { photos: 5 },
         },
@@ -33,7 +33,7 @@ describe("Albums API", () => {
 
       expect(mockPrisma.album.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { isPublic: true },
+          where: { visibility: "public" },
         })
       );
       expect(data[0].photoCount).toBe(5);
@@ -46,7 +46,7 @@ describe("Albums API", () => {
           id: 1,
           slug: "album-1",
           name: "Album 1",
-          isPublic: false,
+          visibility: "private",
           photos: [],
           _count: { photos: 0 },
         },
@@ -84,7 +84,7 @@ describe("Albums API", () => {
         slug: "new-album",
         description: "Description",
         coverUrl: "https://example.com/cover.jpg",
-        isPublic: true,
+        visibility: "public",
         sortOrder: 1,
       };
       mockPrisma.album.findUnique.mockResolvedValue(null);
@@ -98,7 +98,7 @@ describe("Albums API", () => {
           slug: "new-album",
           description: "Description",
           coverUrl: "https://example.com/cover.jpg",
-          isPublic: true,
+          visibility: "public",
         }),
       });
 
@@ -116,7 +116,7 @@ describe("Albums API", () => {
         slug: "new-album",
         description: null,
         coverUrl: null,
-        isPublic: true,
+        visibility: "public",
         sortOrder: 1,
       };
       mockPrisma.album.findUnique.mockResolvedValue(null);
@@ -139,7 +139,7 @@ describe("Albums API", () => {
           slug: "new-album",
           description: null,
           coverUrl: null,
-          isPublic: true,
+          visibility: "public",
           sortOrder: 1,
         },
       });

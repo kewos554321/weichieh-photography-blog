@@ -20,7 +20,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
-    const token = searchParams.get("token");
+
+    // 取得訪客 token
+    const visitorToken = request.cookies.get("visitor_token")?.value;
 
     const photo = await prisma.photo.findUnique({
       where: { slug },
@@ -57,43 +59,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 根據 visibility 檢查存取權限
-    switch (photo.visibility) {
-      case "public":
-      case "unlisted":
-        // public 和 unlisted 都可以直接訪問
-        return NextResponse.json(photo);
+    if (photo.visibility === "public") {
+      return NextResponse.json(photo);
+    }
 
-      case "token":
-        // 需要正確的 token
-        if (!token || token !== photo.accessToken) {
-          return NextResponse.json({ error: "Photo not found" }, { status: 404 });
-        }
-        // 檢查 token 是否過期
-        if (photo.tokenExpiresAt && photo.tokenExpiresAt < new Date()) {
-          return NextResponse.json({ error: "Photo not found" }, { status: 404 });
-        }
-        return NextResponse.json(photo);
+    if (photo.visibility === "private") {
+      // 檢查訪客 token 是否有權限
+      if (visitorToken) {
+        const accessToken = await prisma.accessToken.findUnique({
+          where: { token: visitorToken },
+          include: {
+            photos: { where: { photoId: photo.id } },
+          },
+        });
 
-      case "password":
-        // 檢查 cookie 是否有密碼驗證記錄
-        const passwordCookie = request.cookies.get(`photo_access_${photo.id}`);
-        if (passwordCookie?.value === "verified") {
+        if (
+          accessToken?.isActive &&
+          accessToken.photos.length > 0 &&
+          (!accessToken.expiresAt || accessToken.expiresAt > new Date())
+        ) {
           return NextResponse.json(photo);
         }
-        // 回傳需要密碼的狀態（只回傳基本資訊）
-        return NextResponse.json(
-          {
-            requiresPassword: true,
-            id: photo.id,
-            slug: photo.slug,
-            title: photo.title,
-          },
-          { status: 401 }
-        );
+      }
 
-      default:
-        return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+      // 沒有權限
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
+
+    return NextResponse.json({ error: "Photo not found" }, { status: 404 });
   } catch (error) {
     console.error("Get photo error:", error);
     return NextResponse.json(
@@ -155,17 +148,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         ...(body.articleId !== undefined && {
           articleId: body.articleId,
         }),
-        // 隱私控制欄位
+        // 隱私控制欄位（簡化版）
         ...(body.visibility !== undefined && { visibility: body.visibility }),
-        ...(body.accessToken !== undefined && { accessToken: body.accessToken }),
-        ...(body.tokenExpiresAt !== undefined && {
-          tokenExpiresAt: body.tokenExpiresAt
-            ? new Date(body.tokenExpiresAt)
-            : null,
-        }),
-        ...(body.accessPassword !== undefined && {
-          accessPassword: body.accessPassword,
-        }),
       },
       include: {
         tags: true,

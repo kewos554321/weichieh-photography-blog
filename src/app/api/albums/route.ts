@@ -7,8 +7,44 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
 
-    // 只顯示 visibility = "public" 的相簿（不顯示 unlisted/token/password）
-    const where = admin ? {} : { visibility: "public" };
+    // 取得訪客 token
+    const visitorToken = request.cookies.get("visitor_token")?.value;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let where: any = {};
+
+    if (!admin) {
+      // 取得訪客 token 授權的相簿 ID
+      let authorizedAlbumIds: number[] = [];
+      if (visitorToken) {
+        const accessToken = await prisma.accessToken.findUnique({
+          where: { token: visitorToken },
+          include: {
+            albums: { select: { albumId: true } },
+          },
+        });
+
+        if (accessToken?.isActive) {
+          // 檢查是否過期
+          if (!accessToken.expiresAt || accessToken.expiresAt > new Date()) {
+            authorizedAlbumIds = accessToken.albums.map((a) => a.albumId);
+          }
+        }
+      }
+
+      // 顯示 public 或 token 授權的 private 相簿
+      if (authorizedAlbumIds.length > 0) {
+        where = {
+          OR: [
+            { visibility: "public" },
+            { id: { in: authorizedAlbumIds }, visibility: "private" },
+          ],
+        };
+      } else {
+        // 沒有 token，只顯示 public
+        where = { visibility: "public" };
+      }
+    }
 
     const albums = await prisma.album.findMany({
       where,
@@ -87,13 +123,8 @@ export async function POST(request: NextRequest) {
         description: description || null,
         coverUrl: coverUrl || null,
         sortOrder: (maxSort._max.sortOrder || 0) + 1,
-        // 隱私控制欄位
+        // 隱私控制欄位（簡化版）
         visibility: body.visibility || "public",
-        accessToken: body.accessToken || null,
-        tokenExpiresAt: body.tokenExpiresAt
-          ? new Date(body.tokenExpiresAt)
-          : null,
-        accessPassword: body.accessPassword || null,
       },
     });
 

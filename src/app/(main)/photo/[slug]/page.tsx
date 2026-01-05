@@ -3,10 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { notFound, useSearchParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import { CommentForm, CommentList } from "@/components/comments";
 import { LikeButton } from "@/components/photo";
-import { PasswordProtected } from "@/components/PasswordProtected";
 
 interface PhotoTag {
   id: number;
@@ -46,8 +45,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [commentRefreshKey, setCommentRefreshKey] = useState(0);
-  const [requiresPassword, setRequiresPassword] = useState<{ title: string } | null>(null);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
@@ -58,24 +55,8 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
 
     const fetchPhoto = async () => {
       try {
-        // Build URL with token if provided
-        const token = searchParams.get("token");
-        const url = token
-          ? `/api/photos/${slug}?token=${token}`
-          : `/api/photos/${slug}`;
-
         // Fetch single photo
-        const res = await fetch(url);
-
-        // Handle password protected photos
-        if (res.status === 401) {
-          const data = await res.json();
-          if (data.requiresPassword) {
-            setRequiresPassword({ title: data.title });
-            setIsLoading(false);
-            return;
-          }
-        }
+        const res = await fetch(`/api/photos/${slug}`);
 
         if (!res.ok) {
           setPhoto(null);
@@ -84,7 +65,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         }
         const data = await res.json();
         setPhoto(data);
-        setRequiresPassword(null);
 
         // Track view
         fetch("/api/analytics/track", {
@@ -112,7 +92,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
     };
 
     fetchPhoto();
-  }, [slug, searchParams]);
+  }, [slug]);
 
   const currentIndex = photo ? allPhotos.findIndex((p) => p.slug === photo.slug) : -1;
   const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
@@ -122,20 +102,6 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
     return (
       <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  // Show password input for protected photos
-  if (requiresPassword && slug) {
-    return (
-      <div className="pt-16 md:pt-20">
-        <PasswordProtected
-          type="photo"
-          slug={slug}
-          title={requiresPassword.title}
-          onSuccess={() => window.location.reload()}
-        />
       </div>
     );
   }

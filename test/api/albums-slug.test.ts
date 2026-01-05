@@ -43,7 +43,7 @@ describe("Albums [slug] API", () => {
         id: 1,
         slug: "test-album",
         name: "Test Album",
-        isPublic: true,
+        visibility: "public",
         photos: [
           { photo: { id: 1, status: "published", tags: [] } },
           { photo: { id: 2, status: "draft", tags: [] } },
@@ -63,7 +63,7 @@ describe("Albums [slug] API", () => {
         id: 1,
         slug: "test-album",
         name: "Test Album",
-        isPublic: true,
+        visibility: "public",
         photos: [
           { photo: { id: 1, status: "published", tags: [] } },
           { photo: { id: 2, status: "draft", tags: [] } },
@@ -95,7 +95,7 @@ describe("Albums [slug] API", () => {
         id: 1,
         slug: "private-album",
         name: "Private Album",
-        isPublic: false,
+        visibility: "private",
         photos: [],
       };
       mockPrisma.album.findUnique.mockResolvedValue(mockAlbum);
@@ -112,7 +112,7 @@ describe("Albums [slug] API", () => {
         id: 1,
         slug: "private-album",
         name: "Private Album",
-        isPublic: false,
+        visibility: "private",
         photos: [],
       };
       mockPrisma.album.findUnique.mockResolvedValue(mockAlbum);
@@ -234,24 +234,24 @@ describe("Albums [slug] API", () => {
       );
     });
 
-    it("should update isPublic", async () => {
+    it("should update visibility", async () => {
       mockPrisma.album.findUnique.mockResolvedValue(mockCurrentAlbum);
       mockPrisma.album.update.mockResolvedValue({
         id: 1,
         slug: "test-album",
         name: "Test Album",
-        isPublic: false,
+        visibility: "private",
       });
 
       await PUT(
-        createRequest("test-album", "PUT", { isPublic: false }),
+        createRequest("test-album", "PUT", { visibility: "private" }),
         createParams("test-album")
       );
 
       expect(mockPrisma.album.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            isPublic: false,
+            visibility: "private",
           }),
         })
       );

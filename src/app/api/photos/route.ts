@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    // 取得訪客 token
+    const visitorToken = request.cookies.get("visitor_token")?.value;
+
     const where: Record<string, unknown> = {};
     if (category && category !== "All") where.category = category;
     if (tag) where.tags = { some: { name: tag } };
@@ -32,16 +35,53 @@ export async function GET(request: NextRequest) {
     } else if (!admin) {
       // 公開頁面只顯示已發佈且發佈時間已到的內容
       where.status = "published";
-      // 只顯示 visibility = "public" 的照片（不顯示 unlisted/token/password）
-      where.visibility = "public";
-      where.AND = [
-        {
-          OR: [
-            { publishedAt: null },
-            { publishedAt: { lte: new Date() } },
-          ],
-        },
-      ];
+
+      // 取得訪客 token 授權的照片 ID
+      let authorizedPhotoIds: number[] = [];
+      if (visitorToken) {
+        const accessToken = await prisma.accessToken.findUnique({
+          where: { token: visitorToken },
+          include: {
+            photos: { select: { photoId: true } },
+          },
+        });
+
+        if (accessToken?.isActive) {
+          // 檢查是否過期
+          if (!accessToken.expiresAt || accessToken.expiresAt > new Date()) {
+            authorizedPhotoIds = accessToken.photos.map((p) => p.photoId);
+          }
+        }
+      }
+
+      // 顯示 public 或 token 授權的 private 照片
+      if (authorizedPhotoIds.length > 0) {
+        where.AND = [
+          {
+            OR: [
+              { publishedAt: null },
+              { publishedAt: { lte: new Date() } },
+            ],
+          },
+          {
+            OR: [
+              { visibility: "public" },
+              { id: { in: authorizedPhotoIds }, visibility: "private" },
+            ],
+          },
+        ];
+      } else {
+        // 沒有 token，只顯示 public
+        where.visibility = "public";
+        where.AND = [
+          {
+            OR: [
+              { publishedAt: null },
+              { publishedAt: { lte: new Date() } },
+            ],
+          },
+        ];
+      }
     }
 
     const [photos, total] = await Promise.all([
@@ -107,13 +147,8 @@ export async function POST(request: NextRequest) {
         status: body.status || "draft",
         publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
         articleId: body.articleId || null,
-        // 隱私控制欄位
+        // 隱私控制欄位（簡化版）
         visibility: body.visibility || "public",
-        accessToken: body.accessToken || null,
-        tokenExpiresAt: body.tokenExpiresAt
-          ? new Date(body.tokenExpiresAt)
-          : null,
-        accessPassword: body.accessPassword || null,
         ...(body.tagIds && {
           tags: {
             connect: body.tagIds.map((id: number) => ({ id })),

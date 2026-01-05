@@ -15,9 +15,10 @@ import {
   FolderOpen,
   Images,
   MessageSquare,
+  Key,
 } from "lucide-react";
 
-type Section = "photos" | "albums" | "articles" | "media" | "comments" | "analytics" | "settings";
+type Section = "photos" | "albums" | "articles" | "media" | "tokens" | "comments" | "analytics" | "settings";
 
 interface SubNavItem {
   label: string;
@@ -67,6 +68,12 @@ const navItems: NavItem[] = [
     href: "/admin/media",
   },
   {
+    section: "tokens",
+    label: "Access Tokens",
+    icon: Key,
+    href: "/admin/tokens",
+  },
+  {
     section: "comments",
     label: "Comments",
     icon: MessageSquare,
@@ -98,6 +105,7 @@ export function AdminSidebar() {
     if (pathname.startsWith("/admin/albums")) return "albums";
     if (pathname.startsWith("/admin/articles")) return "articles";
     if (pathname.startsWith("/admin/media")) return "media";
+    if (pathname.startsWith("/admin/tokens")) return "tokens";
     if (pathname.startsWith("/admin/comments")) return "comments";
     if (pathname.startsWith("/admin/analytics")) return "analytics";
     if (pathname.startsWith("/admin/settings")) return "settings";
