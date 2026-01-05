@@ -1,4 +1,5 @@
 export * from "./MediaCard";
+export * from "./MediaListItem";
 export * from "./MediaLibraryContent";
 export * from "./MediaUploader";
 export * from "./MediaEditor";
