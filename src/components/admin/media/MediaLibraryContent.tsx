@@ -16,6 +16,8 @@ import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
 import { MediaEditor } from "./MediaEditor";
 import { MediaDetailModal } from "./MediaDetailModal";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
 import { MediaListItem } from "./MediaListItem";
 
@@ -56,9 +58,25 @@ export function MediaLibraryContent({
   const [showUploader, setShowUploader] = useState(false);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
+  // For external picker selection
   const [selectedMedia, setSelectedMedia] = useState<Set<number>>(
     new Set(selectedIds)
   );
+
+  // Bulk selection for batch operations (when not in selectable mode)
+  const {
+    selectedCount: bulkSelectedCount,
+    isAllSelected: bulkIsAllSelected,
+    isBulkUpdating,
+    toggleSelect: bulkToggleSelect,
+    toggleSelectAll: bulkToggleSelectAll,
+    clearSelection: bulkClearSelection,
+    setIsBulkUpdating,
+    isSelected: bulkIsSelected,
+  } = useBulkSelection({
+    items: media,
+    getItemId: (m) => m.id,
+  });
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -227,6 +245,72 @@ export function MediaLibraryContent({
     fetchMedia(1, true);
   };
 
+  // Bulk action handlers
+  const handleBulkDelete = async () => {
+    if (bulkSelectedCount === 0) return;
+    if (!confirm(`確定要刪除 ${bulkSelectedCount} 個媒體檔案嗎？此操作無法復原。`)) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = media
+        .filter((m) => bulkIsSelected(m.id))
+        .map((item) =>
+          fetch(`/api/media/${item.id}`, { method: "DELETE" })
+        );
+      const results = await Promise.all(promises);
+      const failedCount = results.filter((r) => !r.ok).length;
+      if (failedCount > 0) {
+        alert(`有 ${failedCount} 個檔案刪除失敗（可能正在被使用）`);
+      }
+      fetchMedia(1, true);
+      bulkClearSelection();
+    } catch {
+      alert("批次刪除失敗");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleBulkMoveFolder = async (folderId: string) => {
+    if (bulkSelectedCount === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const promises = media
+        .filter((m) => bulkIsSelected(m.id))
+        .map((item) =>
+          fetch(`/api/media/${item.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folderId: folderId === "none" ? null : parseInt(folderId) }),
+          })
+        );
+      await Promise.all(promises);
+      fetchMedia(1, true);
+      bulkClearSelection();
+    } catch {
+      alert("批次移動失敗");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: "folder",
+      label: "Move to...",
+      options: [
+        { value: "none", label: "未分類" },
+        ...folders.map((f) => ({ value: f.id.toString(), label: f.name })),
+      ],
+      onAction: (value) => value && handleBulkMoveFolder(value),
+    },
+    {
+      key: "delete",
+      label: "Delete",
+      variant: "danger",
+      onAction: handleBulkDelete,
+    },
+  ];
+
   return (
     <div>
       {/* Toolbar */}
@@ -342,6 +426,18 @@ export function MediaLibraryContent({
         </button>
       </div>
 
+      {/* Bulk Action Bar (only show when not in picker/selectable mode) */}
+      {!selectable && (
+        <div className="mb-4">
+          <BulkActionBar
+            selectedCount={bulkSelectedCount}
+            onClear={bulkClearSelection}
+            actions={bulkActions}
+            disabled={isBulkUpdating}
+          />
+        </div>
+      )}
+
       {/* Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
@@ -361,11 +457,12 @@ export function MediaLibraryContent({
                 <MediaCard
                   key={item.id}
                   media={item}
-                  isSelected={selectedMedia.has(item.id)}
+                  isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
                   selectable={selectable}
-                  onSelect={handleSelect}
-                  onView={() => setViewingMedia(item)}
-                  onEdit={() => setEditingMedia(item)}
+                  showCheckbox={!selectable}
+                  onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
+                  onEdit={() => setViewingMedia(item)}
+                  onEditImage={() => setEditingMedia(item)}
                   onDelete={handleDelete}
                 />
               ))}
@@ -374,6 +471,16 @@ export function MediaLibraryContent({
             <div className="space-y-2">
               {/* List Header */}
               <div className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-stone-400 border-b border-stone-200">
+                {!selectable && (
+                  <div className="w-6 flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={bulkIsAllSelected}
+                      onChange={bulkToggleSelectAll}
+                      className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                    />
+                  </div>
+                )}
                 <div className="w-12 flex-shrink-0"></div>
                 <div className="flex-1 min-w-0">檔名</div>
                 <div className="w-20 text-right flex-shrink-0">大小</div>
@@ -386,11 +493,12 @@ export function MediaLibraryContent({
                 <MediaListItem
                   key={item.id}
                   media={item}
-                  isSelected={selectedMedia.has(item.id)}
+                  isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
                   selectable={selectable}
-                  onSelect={handleSelect}
-                  onView={() => setViewingMedia(item)}
-                  onEdit={() => setEditingMedia(item)}
+                  showCheckbox={!selectable}
+                  onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
+                  onEdit={() => setViewingMedia(item)}
+                  onEditImage={() => setEditingMedia(item)}
                   onDelete={handleDelete}
                 />
               ))}

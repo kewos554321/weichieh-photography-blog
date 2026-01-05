@@ -1,17 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { Edit2, Trash2, Check, Eye, FolderOpen } from "lucide-react";
+import { Edit2, Trash2, Check, Sliders, FolderOpen } from "lucide-react";
 import type { Media } from "../types";
 
 interface MediaListItemProps {
   media: Media;
   isSelected?: boolean;
   selectable?: boolean;
+  showCheckbox?: boolean;
   onSelect?: (media: Media) => void;
   onEdit?: (media: Media) => void;
+  onEditImage?: (media: Media) => void;
   onDelete?: (media: Media) => void;
-  onView?: (media: Media) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -34,16 +35,24 @@ export function MediaListItem({
   media,
   isSelected = false,
   selectable = false,
+  showCheckbox = false,
   onSelect,
   onEdit,
+  onEditImage,
   onDelete,
-  onView,
 }: MediaListItemProps) {
   const handleClick = () => {
     if (selectable && onSelect) {
       onSelect(media);
-    } else if (onView) {
-      onView(media);
+    } else if (onEdit) {
+      onEdit(media);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect(media);
     }
   };
 
@@ -56,6 +65,17 @@ export function MediaListItem({
       }`}
       onClick={handleClick}
     >
+      {/* Checkbox for bulk selection */}
+      {showCheckbox && (
+        <div className="w-6 flex-shrink-0" onClick={handleCheckboxClick}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => {}}
+            className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+          />
+        </div>
+      )}
       {/* Thumbnail */}
       <div className="relative w-12 h-12 flex-shrink-0 rounded-md overflow-hidden bg-stone-100">
         <Image
@@ -129,18 +149,6 @@ export function MediaListItem({
 
       {/* Actions */}
       <div className="flex items-center gap-1 w-24 justify-end flex-shrink-0">
-        {onView && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(media);
-            }}
-            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
-            title="查看"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-        )}
         {onEdit && (
           <button
             onClick={(e) => {
@@ -148,9 +156,21 @@ export function MediaListItem({
               onEdit(media);
             }}
             className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
-            title="編輯"
+            title="編輯資訊"
           >
             <Edit2 className="w-4 h-4" />
+          </button>
+        )}
+        {onEditImage && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditImage(media);
+            }}
+            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded transition-colors"
+            title="修圖"
+          >
+            <Sliders className="w-4 h-4" />
           </button>
         )}
         {onDelete && (

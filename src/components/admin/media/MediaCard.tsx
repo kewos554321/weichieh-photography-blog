@@ -1,17 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { Edit2, Trash2, Check, Eye } from "lucide-react";
+import { Edit2, Trash2, Check, Sliders } from "lucide-react";
 import type { Media } from "../types";
 
 interface MediaCardProps {
   media: Media;
   isSelected?: boolean;
   selectable?: boolean;
+  showCheckbox?: boolean;
   onSelect?: (media: Media) => void;
   onEdit?: (media: Media) => void;
+  onEditImage?: (media: Media) => void;
   onDelete?: (media: Media) => void;
-  onView?: (media: Media) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -26,16 +27,24 @@ export function MediaCard({
   media,
   isSelected = false,
   selectable = false,
+  showCheckbox = false,
   onSelect,
   onEdit,
+  onEditImage,
   onDelete,
-  onView,
 }: MediaCardProps) {
   const handleClick = () => {
     if (selectable && onSelect) {
       onSelect(media);
-    } else if (onView) {
-      onView(media);
+    } else if (onEdit) {
+      onEdit(media);
+    }
+  };
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelect) {
+      onSelect(media);
     }
   };
 
@@ -58,8 +67,23 @@ export function MediaCard({
           sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 16vw"
         />
 
-        {/* Selection Indicator */}
-        {selectable && isSelected && (
+        {/* Selection Indicator / Checkbox */}
+        {showCheckbox && (
+          <div
+            className={`absolute top-2 left-2 transition-opacity ${
+              isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={handleCheckboxClick}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              className="w-5 h-5 rounded border-stone-300 bg-white text-stone-900 focus:ring-stone-500 cursor-pointer"
+            />
+          </div>
+        )}
+        {selectable && isSelected && !showCheckbox && (
           <div className="absolute top-2 left-2 w-6 h-6 bg-stone-900 rounded-full flex items-center justify-center">
             <Check className="w-4 h-4 text-white" />
           </div>
@@ -67,18 +91,6 @@ export function MediaCard({
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-          {onView && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onView(media);
-              }}
-              className="p-2 bg-white rounded-full text-stone-700 hover:bg-stone-100 transition-colors"
-              title="查看"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-          )}
           {onEdit && (
             <button
               onClick={(e) => {
@@ -86,9 +98,21 @@ export function MediaCard({
                 onEdit(media);
               }}
               className="p-2 bg-white rounded-full text-stone-700 hover:bg-stone-100 transition-colors"
-              title="編輯"
+              title="編輯資訊"
             >
               <Edit2 className="w-4 h-4" />
+            </button>
+          )}
+          {onEditImage && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditImage(media);
+              }}
+              className="p-2 bg-white rounded-full text-stone-700 hover:bg-stone-100 transition-colors"
+              title="修圖"
+            >
+              <Sliders className="w-4 h-4" />
             </button>
           )}
           {onDelete && (

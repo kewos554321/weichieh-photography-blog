@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import type { Article, ArticleTag, Category } from "../types";
 import { ArticleModal } from "./ArticleModal";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import {
   Plus,
   Search,
@@ -25,8 +27,20 @@ export function ArticleListContent() {
   const [tagFilter, setTagFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  const {
+    selectedCount,
+    isAllSelected,
+    isBulkUpdating,
+    toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+    setIsBulkUpdating,
+    isSelected,
+  } = useBulkSelection({
+    items: articles,
+    getItemId: (article) => article.id,
+  });
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -108,41 +122,23 @@ export function ArticleListContent() {
     ? ["全部", ...categories.map((c) => c.name)]
     : ["全部", "技巧分享", "旅行日記", "攝影思考"];
 
-  // Bulk selection handlers
-  const toggleSelect = (id: number) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedIds(newSet);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === articles.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(articles.map((a) => a.id)));
-    }
-  };
-
-  const handleBulkStatusChange = async (status: "draft" | "scheduled" | "published") => {
-    if (selectedIds.size === 0) return;
+  // Bulk action handlers
+  const handleBulkStatusChange = async (status: string) => {
+    if (selectedCount === 0) return;
     setIsBulkUpdating(true);
     try {
-      const promises = Array.from(selectedIds).map((id) => {
-        const article = articles.find((a) => a.id === id);
-        if (!article) return Promise.resolve();
-        return fetch(`/api/articles/${article.slug}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        });
-      });
+      const promises = articles
+        .filter((a) => isSelected(a.id))
+        .map((article) =>
+          fetch(`/api/articles/${article.slug}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          })
+        );
       await Promise.all(promises);
       fetchArticles();
-      setSelectedIds(new Set());
+      clearSelection();
     } catch {
       alert("Failed to update articles");
     } finally {
@@ -151,24 +147,42 @@ export function ArticleListContent() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    if (!confirm(`確定要刪除 ${selectedIds.size} 篇文章嗎？此操作無法復原。`)) return;
+    if (selectedCount === 0) return;
+    if (!confirm(`確定要刪除 ${selectedCount} 篇文章嗎？此操作無法復原。`)) return;
     setIsBulkUpdating(true);
     try {
-      const promises = Array.from(selectedIds).map((id) => {
-        const article = articles.find((a) => a.id === id);
-        if (!article) return Promise.resolve();
-        return fetch(`/api/articles/${article.slug}`, { method: "DELETE" });
-      });
+      const promises = articles
+        .filter((a) => isSelected(a.id))
+        .map((article) =>
+          fetch(`/api/articles/${article.slug}`, { method: "DELETE" })
+        );
       await Promise.all(promises);
       fetchArticles();
-      setSelectedIds(new Set());
+      clearSelection();
     } catch {
       alert("Failed to delete articles");
     } finally {
       setIsBulkUpdating(false);
     }
   };
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: "status",
+      label: "Change Status...",
+      options: [
+        { value: "draft", label: "Set as Draft" },
+        { value: "published", label: "Publish" },
+      ],
+      onAction: (value) => value && handleBulkStatusChange(value),
+    },
+    {
+      key: "delete",
+      label: "Delete",
+      variant: "danger",
+      onAction: handleBulkDelete,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -231,43 +245,12 @@ export function ArticleListContent() {
       </div>
 
       {/* Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <div className="bg-stone-900 text-white rounded-lg p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-sm">{selectedIds.size} selected</span>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs text-stone-400 hover:text-white"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleBulkStatusChange(e.target.value as "draft" | "scheduled" | "published");
-                  e.target.value = "";
-                }
-              }}
-              disabled={isBulkUpdating}
-              className="px-3 py-1.5 bg-stone-800 border border-stone-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
-            >
-              <option value="">Change Status...</option>
-              <option value="draft">Set as Draft</option>
-              <option value="published">Publish</option>
-            </select>
-            <button
-              onClick={handleBulkDelete}
-              disabled={isBulkUpdating}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50 flex items-center gap-1"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
+      <BulkActionBar
+        selectedCount={selectedCount}
+        onClear={clearSelection}
+        actions={bulkActions}
+        disabled={isBulkUpdating}
+      />
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -283,7 +266,7 @@ export function ArticleListContent() {
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedIds.size === articles.length && articles.length > 0}
+                      checked={isAllSelected}
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                     />
@@ -313,11 +296,11 @@ export function ArticleListContent() {
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {articles.map((article) => (
-                  <tr key={article.id} className={`hover:bg-stone-50 ${selectedIds.has(article.id) ? "bg-stone-50" : ""}`}>
+                  <tr key={article.id} className={`hover:bg-stone-50 ${isSelected(article.id) ? "bg-stone-50" : ""}`}>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(article.id)}
+                        checked={isSelected(article.id)}
                         onChange={() => toggleSelect(article.id)}
                         className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                       />

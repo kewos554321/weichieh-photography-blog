@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback } from "react";
 import type { Photo, PhotoTag, Category } from "../types";
 import { PhotoModal } from "./PhotoModal";
 import { BatchUploadModal } from "./BatchUploadModal";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import {
   Plus,
   Search,
@@ -29,8 +31,20 @@ export function PhotoListContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  const {
+    selectedCount,
+    isAllSelected,
+    isBulkUpdating,
+    toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+    setIsBulkUpdating,
+    isSelected,
+  } = useBulkSelection({
+    items: photos,
+    getItemId: (photo) => photo.id,
+  });
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -112,41 +126,23 @@ export function PhotoListContent() {
     ? ["All", ...categories.map((c) => c.name)]
     : ["All", "Portrait", "Landscape", "Street", "Nature"];
 
-  // Bulk selection handlers
-  const toggleSelect = (id: number) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
-    }
-    setSelectedIds(newSet);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === photos.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(photos.map((p) => p.id)));
-    }
-  };
-
-  const handleBulkStatusChange = async (status: "draft" | "scheduled" | "published") => {
-    if (selectedIds.size === 0) return;
+  // Bulk action handlers
+  const handleBulkStatusChange = async (status: string) => {
+    if (selectedCount === 0) return;
     setIsBulkUpdating(true);
     try {
-      const promises = Array.from(selectedIds).map((id) => {
-        const photo = photos.find((p) => p.id === id);
-        if (!photo) return Promise.resolve();
-        return fetch(`/api/photos/${photo.slug}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status }),
-        });
-      });
+      const promises = photos
+        .filter((p) => isSelected(p.id))
+        .map((photo) =>
+          fetch(`/api/photos/${photo.slug}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          })
+        );
       await Promise.all(promises);
       fetchPhotos();
-      setSelectedIds(new Set());
+      clearSelection();
     } catch {
       alert("Failed to update photos");
     } finally {
@@ -155,24 +151,42 @@ export function PhotoListContent() {
   };
 
   const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    if (!confirm(`確定要刪除 ${selectedIds.size} 張照片嗎？此操作無法復原。`)) return;
+    if (selectedCount === 0) return;
+    if (!confirm(`確定要刪除 ${selectedCount} 張照片嗎？此操作無法復原。`)) return;
     setIsBulkUpdating(true);
     try {
-      const promises = Array.from(selectedIds).map((id) => {
-        const photo = photos.find((p) => p.id === id);
-        if (!photo) return Promise.resolve();
-        return fetch(`/api/photos/${photo.slug}`, { method: "DELETE" });
-      });
+      const promises = photos
+        .filter((p) => isSelected(p.id))
+        .map((photo) =>
+          fetch(`/api/photos/${photo.slug}`, { method: "DELETE" })
+        );
       await Promise.all(promises);
       fetchPhotos();
-      setSelectedIds(new Set());
+      clearSelection();
     } catch {
       alert("Failed to delete photos");
     } finally {
       setIsBulkUpdating(false);
     }
   };
+
+  const bulkActions: BulkAction[] = [
+    {
+      key: "status",
+      label: "Change Status...",
+      options: [
+        { value: "draft", label: "Set as Draft" },
+        { value: "published", label: "Publish" },
+      ],
+      onAction: (value) => value && handleBulkStatusChange(value),
+    },
+    {
+      key: "delete",
+      label: "Delete",
+      variant: "danger",
+      onAction: handleBulkDelete,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -244,43 +258,12 @@ export function PhotoListContent() {
       </div>
 
       {/* Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <div className="bg-stone-900 text-white rounded-lg p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-sm">{selectedIds.size} selected</span>
-            <button
-              onClick={() => setSelectedIds(new Set())}
-              className="text-xs text-stone-400 hover:text-white"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleBulkStatusChange(e.target.value as "draft" | "scheduled" | "published");
-                  e.target.value = "";
-                }
-              }}
-              disabled={isBulkUpdating}
-              className="px-3 py-1.5 bg-stone-800 border border-stone-700 rounded text-sm focus:outline-none focus:ring-2 focus:ring-stone-500"
-            >
-              <option value="">Change Status...</option>
-              <option value="draft">Set as Draft</option>
-              <option value="published">Publish</option>
-            </select>
-            <button
-              onClick={handleBulkDelete}
-              disabled={isBulkUpdating}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50 flex items-center gap-1"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
-        </div>
-      )}
+      <BulkActionBar
+        selectedCount={selectedCount}
+        onClear={clearSelection}
+        actions={bulkActions}
+        disabled={isBulkUpdating}
+      />
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -296,7 +279,7 @@ export function PhotoListContent() {
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={selectedIds.size === photos.length && photos.length > 0}
+                      checked={isAllSelected}
                       onChange={toggleSelectAll}
                       className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                     />
@@ -326,11 +309,11 @@ export function PhotoListContent() {
               </thead>
               <tbody className="divide-y divide-stone-200">
                 {photos.map((photo) => (
-                  <tr key={photo.id} className={`hover:bg-stone-50 ${selectedIds.has(photo.id) ? "bg-stone-50" : ""}`}>
+                  <tr key={photo.id} className={`hover:bg-stone-50 ${isSelected(photo.id) ? "bg-stone-50" : ""}`}>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedIds.has(photo.id)}
+                        checked={isSelected(photo.id)}
                         onChange={() => toggleSelect(photo.id)}
                         className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                       />
