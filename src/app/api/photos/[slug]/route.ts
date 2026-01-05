@@ -35,6 +35,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             status: true,
           },
         },
+        albums: {
+          include: {
+            album: {
+              select: {
+                id: true,
+                slug: true,
+                name: true,
+                isPublic: true,
+              },
+            },
+          },
+        },
       },
     });
 

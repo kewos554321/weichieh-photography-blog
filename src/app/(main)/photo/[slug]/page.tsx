@@ -21,6 +21,15 @@ interface LinkedArticle {
   status: string;
 }
 
+interface LinkedAlbum {
+  album: {
+    id: number;
+    slug: string;
+    name: string;
+    isPublic: boolean;
+  };
+}
+
 interface Photo {
   id: number;
   slug: string;
@@ -35,6 +44,7 @@ interface Photo {
   behindTheScene?: string;
   tags: PhotoTag[];
   article?: LinkedArticle;
+  albums?: LinkedAlbum[];
 }
 
 export default function PhotoPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -115,7 +125,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
         <nav className="flex items-center gap-2 text-xs tracking-wider text-stone-400">
           <Link href="/" className="hover:text-[#6b9e9a] transition-colors">
-            Gallery
+            Photos
           </Link>
           <span>/</span>
           <span className="text-[#6b9e9a]">{photo.category}</span>
@@ -209,6 +219,29 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
                       {tag.name}
                     </span>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Albums - 收錄於 */}
+            {photo.albums && photo.albums.filter(a => a.album.isPublic).length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs tracking-widest uppercase text-stone-400 mb-3">Included in</p>
+                <div className="flex flex-wrap gap-2">
+                  {photo.albums
+                    .filter(a => a.album.isPublic)
+                    .map((albumPhoto) => (
+                      <Link
+                        key={albumPhoto.album.id}
+                        href={`/albums/${albumPhoto.album.slug}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#6b9e9a]/10 text-[#6b9e9a] rounded-full hover:bg-[#6b9e9a]/20 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        {albumPhoto.album.name}
+                      </Link>
+                    ))}
                 </div>
               </div>
             )}
@@ -340,13 +373,13 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
               <div />
             )}
 
-            {/* Back to Gallery */}
+            {/* Back to Photos */}
             <Link
               href="/"
               className="flex items-center justify-center p-6 md:p-10 border-x border-stone-200 hover:bg-stone-50 transition-colors duration-300"
             >
               <span className="text-xs tracking-[0.2em] uppercase text-stone-500 hover:text-[#6b9e9a] transition-colors">
-                Back to Gallery
+                Back to Photos
               </span>
             </Link>
 

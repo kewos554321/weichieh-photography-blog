@@ -267,37 +267,6 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
               </div>
             </div>
 
-            {/* Navigation */}
-            <div className="mt-8 pt-8 border-t border-stone-200">
-              <div className="grid md:grid-cols-2 gap-4">
-                {prevArticle ? (
-                  <Link
-                    href={`/blog/${prevArticle.slug}`}
-                    className="group p-6 bg-stone-100 rounded-lg hover:bg-[#6b9e9a]/10 transition-colors"
-                  >
-                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">← Previous</p>
-                    <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-2">
-                      {prevArticle.title}
-                    </p>
-                  </Link>
-                ) : (
-                  <div />
-                )}
-                {nextArticle ? (
-                  <Link
-                    href={`/blog/${nextArticle.slug}`}
-                    className="group p-6 bg-stone-100 rounded-lg hover:bg-[#6b9e9a]/10 transition-colors text-right"
-                  >
-                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-2">Next →</p>
-                    <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-2">
-                      {nextArticle.title}
-                    </p>
-                  </Link>
-                ) : (
-                  <div />
-                )}
-              </div>
-            </div>
           </article>
 
           {/* Sidebar - Table of Contents */}
@@ -331,7 +300,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
                 className="flex items-center gap-2 text-sm text-stone-500 hover:text-[#6b9e9a] transition-colors"
               >
                 <span>←</span>
-                <span>All Articles</span>
+                <span>All Posts</span>
               </Link>
             </div>
           </aside>
@@ -342,7 +311,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
       {article.photos && article.photos.length > 0 && (
         <section className="border-t border-stone-200 py-16 md:py-20 bg-stone-50/50">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
-            <p className="text-xs tracking-widest uppercase text-[#6b9e9a] mb-2">Gallery</p>
+            <p className="text-xs tracking-widest uppercase text-[#6b9e9a] mb-2">Photos</p>
             <h2 className="font-serif text-2xl md:text-3xl text-stone-700 mb-10">本文相關照片</h2>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
@@ -400,6 +369,55 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
           </div>
         </section>
       )}
+
+      {/* Navigation - Same pattern as photo and album pages */}
+      <section className="border-t border-stone-200">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-3">
+            {/* Previous */}
+            {prevArticle ? (
+              <Link
+                href={`/blog/${prevArticle.slug}`}
+                className="group flex items-center gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
+              >
+                <span className="text-2xl text-stone-300 group-hover:text-[#6b9e9a] transition-colors">←</span>
+                <div className="hidden md:block">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Previous</p>
+                  <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-1">{prevArticle.title}</p>
+                </div>
+              </Link>
+            ) : (
+              <div />
+            )}
+
+            {/* Back to Blog */}
+            <Link
+              href="/blog"
+              className="flex items-center justify-center p-6 md:p-10 border-x border-stone-200 hover:bg-stone-50 transition-colors duration-300"
+            >
+              <span className="text-xs tracking-[0.2em] uppercase text-stone-500 hover:text-[#6b9e9a] transition-colors">
+                Back to Blog
+              </span>
+            </Link>
+
+            {/* Next */}
+            {nextArticle ? (
+              <Link
+                href={`/blog/${nextArticle.slug}`}
+                className="group flex items-center justify-end gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
+              >
+                <div className="hidden md:block text-right">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Next</p>
+                  <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors line-clamp-1">{nextArticle.title}</p>
+                </div>
+                <span className="text-2xl text-stone-300 group-hover:text-[#6b9e9a] transition-colors">→</span>
+              </Link>
+            ) : (
+              <div />
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
