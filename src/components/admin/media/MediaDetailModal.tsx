@@ -10,8 +10,9 @@ import {
   ExternalLink,
   Loader2,
   Tag,
+  FolderOpen,
 } from "lucide-react";
-import type { Media, MediaTag, MediaWithUsage } from "../types";
+import type { Media, MediaTag, MediaFolder, MediaWithUsage } from "../types";
 
 interface MediaDetailModalProps {
   media: Media;
@@ -50,23 +51,31 @@ export function MediaDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [allTags, setAllTags] = useState<MediaTag[]>([]);
+  const [allFolders, setAllFolders] = useState<MediaFolder[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>(
     media.tags.map((t) => t.id)
+  );
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(
+    media.folderId
   );
 
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const [mediaRes, tagsRes] = await Promise.all([
+        const [mediaRes, tagsRes, foldersRes] = await Promise.all([
           fetch(`/api/media/${media.id}`),
           fetch("/api/media/tags"),
+          fetch("/api/media/folders"),
         ]);
         const mediaData = await mediaRes.json();
         const tagsData = await tagsRes.json();
+        const foldersData = await foldersRes.json();
         setDetails(mediaData);
         setAllTags(tagsData);
+        setAllFolders(foldersData);
         setAlt(mediaData.alt || "");
         setSelectedTagIds(mediaData.tags.map((t: MediaTag) => t.id));
+        setSelectedFolderId(mediaData.folderId);
       } catch (error) {
         console.error("Failed to fetch media details:", error);
       } finally {
@@ -95,6 +104,7 @@ export function MediaDetailModal({
         body: JSON.stringify({
           alt,
           tagIds: selectedTagIds,
+          folderId: selectedFolderId,
         }),
       });
 
@@ -217,6 +227,26 @@ export function MediaDetailModal({
                     rows={2}
                     className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-stone-500"
                   />
+                </div>
+
+                {/* Folder */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-stone-700 flex items-center gap-1">
+                    <FolderOpen className="w-4 h-4" />
+                    資料夾
+                  </h3>
+                  <select
+                    value={selectedFolderId?.toString() || ""}
+                    onChange={(e) => setSelectedFolderId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="w-full px-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                  >
+                    <option value="">未分類</option>
+                    {allFolders.map((folder) => (
+                      <option key={folder.id} value={folder.id.toString()}>
+                        {folder.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Tags */}

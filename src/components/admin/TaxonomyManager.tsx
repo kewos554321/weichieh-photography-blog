@@ -8,7 +8,7 @@ import { TagManager } from "./TagManager";
 type Tab = "categories" | "tags";
 
 interface TaxonomyManagerProps {
-  type: "photos" | "articles";
+  type: "photos" | "articles" | "media";
 }
 
 export function TaxonomyManager({ type }: TaxonomyManagerProps) {
@@ -27,12 +27,18 @@ export function TaxonomyManager({ type }: TaxonomyManagerProps) {
       categoryLabel: "分類",
       tagCountField: "articles",
     },
+    media: {
+      categoryApiPath: "/api/media/folders",
+      tagApiPath: "/api/media/tags",
+      categoryLabel: "資料夾",
+      tagCountField: "media",
+    },
   };
 
   const { categoryApiPath, tagApiPath, categoryLabel, tagCountField } = config[type];
 
   const tabs = [
-    { id: "categories" as Tab, label: "Categories", icon: FolderOpen },
+    { id: "categories" as Tab, label: type === "media" ? "Folders" : "Categories", icon: FolderOpen },
     { id: "tags" as Tab, label: "Tags", icon: Tag },
   ];
 
@@ -59,14 +65,14 @@ export function TaxonomyManager({ type }: TaxonomyManagerProps) {
       {/* Content */}
       {activeTab === "categories" && (
         <CategoryManager
-          title={`${type === "photos" ? "Photo" : "Article"} Categories`}
+          title={type === "media" ? "Media Folders" : `${type === "photos" ? "Photo" : "Article"} Categories`}
           apiPath={categoryApiPath}
           itemLabel={categoryLabel}
         />
       )}
       {activeTab === "tags" && (
         <TagManager
-          title={`${type === "photos" ? "Photo" : "Article"} Tags`}
+          title={type === "media" ? "Media Tags" : `${type === "photos" ? "Photo" : "Article"} Tags`}
           apiPath={tagApiPath}
           countField={tagCountField}
         />

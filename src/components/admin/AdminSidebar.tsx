@@ -66,6 +66,10 @@ const navItems: NavItem[] = [
     label: "Media",
     icon: FolderOpen,
     href: "/admin/media",
+    subItems: [
+      { label: "Library", href: "/admin/media", icon: List },
+      { label: "Taxonomy", href: "/admin/media/taxonomy", icon: Layers },
+    ],
   },
   {
     section: "tokens",
@@ -118,7 +122,7 @@ export function AdminSidebar() {
     // 完全匹配，或者是子路徑
     if (pathname === href) return true;
     // 特殊處理：如果是列表頁面，只有完全匹配才算
-    if (href === "/admin/photos" || href === "/admin/articles" || href === "/admin/settings") {
+    if (href === "/admin/photos" || href === "/admin/articles" || href === "/admin/media" || href === "/admin/settings") {
       return pathname === href;
     }
     return pathname.startsWith(href);

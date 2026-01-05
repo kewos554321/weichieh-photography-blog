@@ -10,6 +10,14 @@ export interface MediaTag {
   _count?: { media: number };
 }
 
+export interface MediaFolder {
+  id: number;
+  name: string;
+  slug: string;
+  sortOrder: number;
+  _count?: { media: number };
+}
+
 export interface Media {
   id: number;
   filename: string;
@@ -21,6 +29,8 @@ export interface Media {
   height: number | null;
   alt: string | null;
   tags: MediaTag[];
+  folder: MediaFolder | null;
+  folderId: number | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -8,12 +8,13 @@ import {
   Loader2,
   X,
   ImageIcon,
+  FolderOpen,
 } from "lucide-react";
 import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
 import { MediaEditor } from "./MediaEditor";
 import { MediaDetailModal } from "./MediaDetailModal";
-import type { Media, MediaTag, MediaListResponse } from "../types";
+import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
 
 interface MediaLibraryContentProps {
   selectable?: boolean;
@@ -30,12 +31,14 @@ export function MediaLibraryContent({
 }: MediaLibraryContentProps) {
   const [media, setMedia] = useState<Media[]>([]);
   const [tags, setTags] = useState<MediaTag[]>([]);
+  const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("");
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
   const [showUploader, setShowUploader] = useState(false);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
@@ -62,6 +65,7 @@ export function MediaLibraryContent({
 
         if (search) params.set("search", search);
         if (selectedTag) params.set("tags", selectedTag);
+        if (selectedFolder) params.set("folderId", selectedFolder);
 
         const res = await fetch(`/api/media?${params}`);
         const data: MediaListResponse = await res.json();
@@ -80,7 +84,7 @@ export function MediaLibraryContent({
         setIsLoadingMore(false);
       }
     },
-    [search, selectedTag]
+    [search, selectedTag, selectedFolder]
   );
 
   const fetchTags = useCallback(async () => {
@@ -93,9 +97,20 @@ export function MediaLibraryContent({
     }
   }, []);
 
+  const fetchFolders = useCallback(async () => {
+    try {
+      const res = await fetch("/api/media/folders");
+      const data = await res.json();
+      setFolders(data);
+    } catch (error) {
+      console.error("Failed to fetch folders:", error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchTags();
-  }, [fetchTags]);
+    fetchFolders();
+  }, [fetchTags, fetchFolders]);
 
   useEffect(() => {
     fetchMedia(1, true);
@@ -116,7 +131,7 @@ export function MediaLibraryContent({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [search, selectedTag, fetchMedia]);
+  }, [search, selectedTag, selectedFolder, fetchMedia]);
 
   // Infinite scroll
   useEffect(() => {
@@ -220,6 +235,24 @@ export function MediaLibraryContent({
               <X className="w-4 h-4" />
             </button>
           )}
+        </div>
+
+        {/* Folder Filter */}
+        <div className="relative">
+          <FolderOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <select
+            value={selectedFolder}
+            onChange={(e) => setSelectedFolder(e.target.value)}
+            className="pl-10 pr-8 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500 appearance-none bg-white"
+          >
+            <option value="">所有資料夾</option>
+            <option value="none">未分類</option>
+            {folders.map((folder) => (
+              <option key={folder.id} value={folder.id.toString()}>
+                {folder.name} ({folder._count?.media || 0})
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Tag Filter */}
