@@ -99,7 +99,7 @@ export default function Home() {
       <section className="px-4 md:px-6 pb-8 md:pb-12">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col items-center">
-            <h2 className="font-serif text-2xl md:text-3xl text-stone-700 mb-6 md:mb-8">Gallery</h2>
+            <h2 className="font-serif text-2xl md:text-3xl text-stone-700 mb-6 md:mb-8">Photos</h2>
             <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
               {categories.map((cat) => (
                 <button

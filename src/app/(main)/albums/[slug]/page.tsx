@@ -15,6 +15,12 @@ interface Photo {
   date: string;
 }
 
+interface AlbumListItem {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 interface Album {
   id: number;
   name: string;
@@ -31,17 +37,22 @@ export default function AlbumDetailPage({
 }) {
   const { slug } = use(params);
   const [album, setAlbum] = useState<Album | null>(null);
+  const [allAlbums, setAllAlbums] = useState<AlbumListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/albums/${slug}`)
-      .then((res) => {
+    // Fetch current album and all albums for navigation
+    Promise.all([
+      fetch(`/api/albums/${slug}`).then((res) => {
         if (!res.ok) throw new Error("Not found");
         return res.json();
-      })
-      .then((data) => {
-        setAlbum(data);
+      }),
+      fetch("/api/albums").then((res) => res.json()),
+    ])
+      .then(([albumData, albumsData]) => {
+        setAlbum(albumData);
+        setAllAlbums(albumsData.albums || []);
         setLoading(false);
       })
       .catch(() => {
@@ -49,6 +60,11 @@ export default function AlbumDetailPage({
         setLoading(false);
       });
   }, [slug]);
+
+  // Find previous and next albums
+  const currentIndex = allAlbums.findIndex((a) => a.slug === slug);
+  const prevAlbum = currentIndex > 0 ? allAlbums[currentIndex - 1] : null;
+  const nextAlbum = currentIndex < allAlbums.length - 1 ? allAlbums[currentIndex + 1] : null;
 
   if (loading) {
     return (
@@ -168,6 +184,55 @@ export default function AlbumDetailPage({
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Navigation - Same pattern as photo and blog pages */}
+      <section className="border-t border-stone-200">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-3">
+            {/* Previous */}
+            {prevAlbum ? (
+              <Link
+                href={`/albums/${prevAlbum.slug}`}
+                className="group flex items-center gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
+              >
+                <span className="text-2xl text-stone-300 group-hover:text-[#6b9e9a] transition-colors">←</span>
+                <div className="hidden md:block">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Previous</p>
+                  <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors">{prevAlbum.name}</p>
+                </div>
+              </Link>
+            ) : (
+              <div />
+            )}
+
+            {/* Back to Albums */}
+            <Link
+              href="/albums"
+              className="flex items-center justify-center p-6 md:p-10 border-x border-stone-200 hover:bg-stone-50 transition-colors duration-300"
+            >
+              <span className="text-xs tracking-[0.2em] uppercase text-stone-500 hover:text-[#6b9e9a] transition-colors">
+                Back to Albums
+              </span>
+            </Link>
+
+            {/* Next */}
+            {nextAlbum ? (
+              <Link
+                href={`/albums/${nextAlbum.slug}`}
+                className="group flex items-center justify-end gap-4 p-6 md:p-10 hover:bg-stone-50 transition-colors duration-300"
+              >
+                <div className="hidden md:block text-right">
+                  <p className="text-[10px] tracking-[0.2em] uppercase text-stone-400 mb-1">Next</p>
+                  <p className="font-serif text-stone-700 group-hover:text-[#6b9e9a] transition-colors">{nextAlbum.name}</p>
+                </div>
+                <span className="text-2xl text-stone-300 group-hover:text-[#6b9e9a] transition-colors">→</span>
+              </Link>
+            ) : (
+              <div />
+            )}
+          </div>
         </div>
       </section>
     </div>

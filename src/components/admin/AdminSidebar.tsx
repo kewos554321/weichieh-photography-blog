@@ -53,11 +53,11 @@ const navItems: NavItem[] = [
   },
   {
     section: "articles",
-    label: "Articles",
+    label: "Blog",
     icon: FileText,
     href: "/admin/articles",
     subItems: [
-      { label: "All Articles", href: "/admin/articles", icon: List },
+      { label: "All Posts", href: "/admin/articles", icon: List },
       { label: "Taxonomy", href: "/admin/articles/taxonomy", icon: Layers },
     ],
   },
