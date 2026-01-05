@@ -217,3 +217,15 @@ h1, h2, h3, h4, h5, h6,
 .dark .vignette {
   background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0,0,0,0.15) 100%);
 }
+
+/* Safe area padding for mobile navigation */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile navigation spacing - add padding to main content on mobile */
+@media (max-width: 767px) {
+  main.flex-1 {
+    padding-bottom: 4rem;
+  }
+}

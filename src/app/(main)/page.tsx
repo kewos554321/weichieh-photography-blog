@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Maximize2 } from "lucide-react";
 import { EnhancedLightbox } from "@/components/lightbox/EnhancedLightbox";
 import { PhotoWallSkeleton, Skeleton } from "@/components/skeletons/Skeleton";
+import { BlurImage } from "@/components/BlurImage";
 
 interface Photo {
   id: number;
@@ -41,7 +42,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen page-transition">
+      <div className="pt-14 md:pt-16 min-h-screen page-transition">
         {/* Hero Skeleton */}
         <section className="relative h-[50vh] md:h-[70vh] overflow-hidden">
           <Skeleton className="w-full h-full" />
@@ -79,7 +80,7 @@ export default function Home() {
   }
 
   return (
-    <div className="pt-16 md:pt-20">
+    <div className="pt-14 md:pt-16">
       {/* Hero Section */}
       <section className="relative h-[50vh] md:h-[70vh] overflow-hidden bg-[var(--card-border)]">
         {featuredPhoto ? (
@@ -163,12 +164,12 @@ export default function Home() {
               >
                 <Link href={`/photo/${photo.slug}`} className="block">
                   <div className="relative overflow-hidden rounded-sm">
-                    <Image
+                    <BlurImage
                       src={photo.src}
                       alt={photo.title}
                       width={600}
                       height={800}
-                      className="w-full h-auto transition-all duration-700 group-hover:scale-[1.03]"
+                      className="w-full h-auto group-hover:scale-[1.03]"
                     />
                     {/* Hover Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 via-stone-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
