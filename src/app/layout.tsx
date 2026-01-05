@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter, Noto_Serif_TC, Noto_Sans_TC } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ToastProvider } from "@/components/Toast";
 
 // English fonts
 const cormorant = Cormorant_Garamond({
@@ -42,14 +44,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-TW">
+    <html lang="zh-TW" suppressHydrationWarning>
       <body
-        className={`${cormorant.variable} ${inter.variable} ${notoSerifTC.variable} ${notoSansTC.variable} antialiased bg-[#fafaf8] text-stone-800 min-h-screen flex flex-col`}
+        className={`${cormorant.variable} ${inter.variable} ${notoSerifTC.variable} ${notoSansTC.variable} antialiased bg-[var(--background)] text-[var(--foreground)] min-h-screen flex flex-col transition-colors duration-300`}
       >
-        {/* Cinematic overlays */}
-        <div className="vignette" />
-        <div className="film-grain" />
-        {children}
+        <ThemeProvider>
+          <ToastProvider>
+            {/* Cinematic overlays */}
+            <div className="vignette" />
+            <div className="film-grain" />
+            {children}
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Maximize2 } from "lucide-react";
 import { EnhancedLightbox } from "@/components/lightbox/EnhancedLightbox";
+import { PhotoWallSkeleton, Skeleton } from "@/components/skeletons/Skeleton";
 
 interface Photo {
   id: number;
@@ -40,8 +41,39 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
-        <div className="text-stone-400">Loading...</div>
+      <div className="pt-16 md:pt-20 min-h-screen page-transition">
+        {/* Hero Skeleton */}
+        <section className="relative h-[50vh] md:h-[70vh] overflow-hidden">
+          <Skeleton className="w-full h-full" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
+            <div className="max-w-7xl mx-auto space-y-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-12 w-2/3 md:w-1/2" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+        </section>
+        {/* Divider */}
+        <div className="flex items-center justify-center py-8 md:py-12">
+          <div className="h-px w-16 bg-[var(--card-border)]" />
+          <div className="mx-4 w-2 h-2 rounded-full bg-[var(--accent-teal)]/50" />
+          <div className="h-px w-16 bg-[var(--card-border)]" />
+        </div>
+        {/* Filter Skeleton */}
+        <section className="px-4 md:px-6 pb-8 md:pb-12">
+          <div className="max-w-7xl mx-auto flex flex-col items-center">
+            <Skeleton className="h-8 w-24 mb-6 md:mb-8" />
+            <div className="flex gap-2 md:gap-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-20 rounded-full" />
+              ))}
+            </div>
+          </div>
+        </section>
+        {/* Photo Wall Skeleton */}
+        <section className="max-w-7xl mx-auto px-2 md:px-4 pb-16 md:pb-24">
+          <PhotoWallSkeleton />
+        </section>
       </div>
     );
   }
@@ -49,7 +81,7 @@ export default function Home() {
   return (
     <div className="pt-16 md:pt-20">
       {/* Hero Section */}
-      <section className="relative h-[50vh] md:h-[70vh] overflow-hidden bg-stone-200">
+      <section className="relative h-[50vh] md:h-[70vh] overflow-hidden bg-[var(--card-border)]">
         {featuredPhoto ? (
           <>
             <Image
@@ -59,26 +91,26 @@ export default function Home() {
               className="object-cover"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#fafaf8] via-[#fafaf8]/20 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#fafaf8]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)] via-[var(--background)]/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--background)]/60 to-transparent" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-stone-100 to-stone-200" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--card-bg)] to-[var(--card-border)]" />
         )}
 
         {/* Hero Content */}
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 lg:p-16">
           <div className="max-w-7xl mx-auto">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#6b9e9a] mb-3 md:mb-4">
+            <p className="text-xs tracking-[0.3em] uppercase text-[var(--accent-teal)] mb-3 md:mb-4">
               一張圖片，一個故事
             </p>
-            <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl text-stone-800 mb-4 md:mb-6 max-w-2xl leading-tight">
+            <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl text-[var(--foreground)] mb-4 md:mb-6 max-w-2xl leading-tight">
               用光影捕捉<br className="hidden md:block" />生命中的瞬間
             </h1>
             {featuredPhoto && (
               <Link
                 href={`/photo/${featuredPhoto.slug}`}
-                className="inline-flex items-center gap-2 text-sm tracking-wider text-stone-600 hover:text-[#6b9e9a] transition-colors duration-500 group"
+                className="inline-flex items-center gap-2 text-sm tracking-wider text-[var(--text-secondary)] hover:text-[var(--accent-teal)] transition-colors duration-500 group"
               >
                 <span>探索作品集</span>
                 <span className="transform group-hover:translate-x-1 transition-transform duration-300">→</span>
@@ -90,16 +122,16 @@ export default function Home() {
 
       {/* Decorative Divider */}
       <div className="flex items-center justify-center py-8 md:py-12">
-        <div className="h-px w-16 bg-stone-300" />
-        <div className="mx-4 w-2 h-2 rounded-full bg-[#6b9e9a]/50" />
-        <div className="h-px w-16 bg-stone-300" />
+        <div className="h-px w-16 bg-[var(--card-border)]" />
+        <div className="mx-4 w-2 h-2 rounded-full bg-[var(--accent-teal)]/50" />
+        <div className="h-px w-16 bg-[var(--card-border)]" />
       </div>
 
       {/* Filter Section */}
       <section className="px-4 md:px-6 pb-8 md:pb-12">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col items-center">
-            <h2 className="font-serif text-2xl md:text-3xl text-stone-700 mb-6 md:mb-8">Photos</h2>
+            <h2 className="font-serif text-2xl md:text-3xl text-[var(--text-primary)] mb-6 md:mb-8">Photos</h2>
             <div className="flex flex-wrap gap-2 md:gap-4 justify-center">
               {categories.map((cat) => (
                 <button
@@ -107,8 +139,8 @@ export default function Home() {
                   onClick={() => setFilter(cat)}
                   className={`px-4 md:px-6 py-2 md:py-2.5 text-xs tracking-[0.2em] uppercase transition-all duration-500 rounded-full border ${
                     filter === cat
-                      ? "bg-[#6b9e9a] text-white border-[#6b9e9a]"
-                      : "bg-transparent text-stone-500 border-stone-300 hover:border-[#6b9e9a] hover:text-[#6b9e9a]"
+                      ? "bg-[var(--accent-teal)] text-white border-[var(--accent-teal)]"
+                      : "bg-transparent text-[var(--text-secondary)] border-[var(--card-border)] hover:border-[var(--accent-teal)] hover:text-[var(--accent-teal)]"
                   }`}
                 >
                   {cat}
@@ -143,7 +175,7 @@ export default function Home() {
 
                     {/* Photo Info */}
                     <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">
-                      <p className="text-[10px] tracking-[0.2em] uppercase text-[#d4a574] mb-1">{photo.category}</p>
+                      <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--accent-amber)] mb-1">{photo.category}</p>
                       <h3 className="font-serif text-sm md:text-base text-white">{photo.title}</h3>
                     </div>
                   </div>
@@ -162,19 +194,19 @@ export default function Home() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-stone-400">尚無照片</p>
+            <p className="text-[var(--text-muted)]">尚無照片</p>
           </div>
         )}
       </section>
 
       {/* Bottom CTA Section */}
-      <section className="border-t border-stone-200 py-16 md:py-24">
+      <section className="border-t border-[var(--card-border)] py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-[#6b9e9a] mb-4">Stories Behind The Lens</p>
-          <h2 className="font-serif text-2xl md:text-4xl text-stone-700 mb-6">探索更多攝影故事</h2>
+          <p className="text-xs tracking-[0.3em] uppercase text-[var(--accent-teal)] mb-4">Stories Behind The Lens</p>
+          <h2 className="font-serif text-2xl md:text-4xl text-[var(--text-primary)] mb-6">探索更多攝影故事</h2>
           <Link
             href="/blog"
-            className="inline-flex items-center gap-3 px-8 py-3 border border-stone-400 text-sm tracking-wider text-stone-600 hover:bg-stone-800 hover:text-white hover:border-stone-800 transition-all duration-500 rounded-full"
+            className="inline-flex items-center gap-3 px-8 py-3 border border-[var(--text-muted)] text-sm tracking-wider text-[var(--text-secondary)] hover:bg-[var(--foreground)] hover:text-[var(--background)] hover:border-[var(--foreground)] transition-all duration-500 rounded-full"
           >
             <span>閱讀 Blog</span>
             <span>→</span>

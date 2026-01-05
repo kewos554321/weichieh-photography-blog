@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { Maximize2, X, Search, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/skeletons/Skeleton";
 
 // Dynamically import map component to avoid SSR issues
 const MapContainer = dynamic(
@@ -195,26 +196,45 @@ export default function MapPage() {
 
   if (isLoading || !isMapReady) {
     return (
-      <div className="pt-16 md:pt-20 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-stone-500 text-sm">Loading map...</p>
+      <div className="pt-16 md:pt-20 min-h-screen">
+        {/* Header Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
+          <Skeleton className="h-4 w-20 mb-3" />
+          <Skeleton className="h-10 w-64 mb-4" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        {/* Map Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 md:px-6 mb-8">
+          <Skeleton className="h-[45vh] md:h-[50vh] rounded-lg" />
+        </div>
+        {/* Photo Grid Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+          <Skeleton className="h-8 w-48 mb-8" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i}>
+                <Skeleton className="aspect-square rounded-lg mb-2" />
+                <Skeleton className="h-4 w-3/4 mb-1" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pt-16 md:pt-20 min-h-screen bg-[#fafaf8]">
+    <div className="pt-16 md:pt-20 min-h-screen">
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12">
-        <p className="text-xs tracking-[0.3em] uppercase text-[#6b9e9a] mb-3">
+        <p className="text-xs tracking-[0.3em] uppercase text-[var(--accent-teal)] mb-3">
           Explore
         </p>
-        <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-stone-800 mb-4">
+        <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl text-[var(--foreground)] mb-4">
           Photography Map
         </h1>
-        <p className="text-stone-500 max-w-2xl">
+        <p className="text-[var(--text-secondary)] max-w-2xl">
           探索我在世界各地拍攝的照片。點擊地圖上的標記查看該地點的作品。
         </p>
       </div>
@@ -304,19 +324,19 @@ export default function MapPage() {
         </MapContainer>
 
         {/* Photo count badge */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
-          <span className="text-sm text-stone-600">
-            <span className="font-medium text-[#6b9e9a]">{photos.length}</span> photos on map
+        <div className="absolute top-4 right-4 z-[1000] bg-[var(--card-bg)]/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
+          <span className="text-sm text-[var(--text-secondary)]">
+            <span className="font-medium text-[var(--accent-teal)]">{photos.length}</span> photos on map
           </span>
         </div>
 
         {/* Fullscreen button */}
         <button
           onClick={() => setIsFullscreen(true)}
-          className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur-sm p-2.5 rounded-full shadow-sm hover:bg-white transition-colors group"
+          className="absolute bottom-4 right-4 z-[1000] bg-[var(--card-bg)]/90 backdrop-blur-sm p-2.5 rounded-full shadow-sm hover:bg-[var(--card-bg)] transition-colors group"
           aria-label="View fullscreen map"
         >
-          <Maximize2 className="w-5 h-5 text-stone-500 group-hover:text-[#6b9e9a] transition-colors" />
+          <Maximize2 className="w-5 h-5 text-[var(--text-secondary)] group-hover:text-[var(--accent-teal)] transition-colors" />
         </button>
         </div>
       </div>
@@ -467,14 +487,14 @@ export default function MapPage() {
       {/* Empty state */}
       {photos.length === 0 && (
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 text-stone-300">
+          <div className="w-16 h-16 mx-auto mb-4 text-[var(--text-muted)]">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h3 className="font-serif text-xl text-stone-700 mb-2">No photos with location yet</h3>
-          <p className="text-stone-500">
+          <h3 className="font-serif text-xl text-[var(--text-primary)] mb-2">No photos with location yet</h3>
+          <p className="text-[var(--text-secondary)]">
             Add coordinates to your photos in the admin panel to see them on the map.
           </p>
         </div>
@@ -483,7 +503,7 @@ export default function MapPage() {
       {/* Photo list by location */}
       {photos.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-          <h2 className="font-serif text-2xl text-stone-700 mb-8">Photos by Location</h2>
+          <h2 className="font-serif text-2xl text-[var(--text-primary)] mb-8">Photos by Location</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {photos.slice(0, 10).map((photo) => (
               <Link
@@ -500,10 +520,10 @@ export default function MapPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <p className="text-sm text-stone-700 truncate group-hover:text-[#6b9e9a] transition-colors">
+                <p className="text-sm text-[var(--text-primary)] truncate group-hover:text-[var(--accent-teal)] transition-colors">
                   {photo.title}
                 </p>
-                <p className="text-xs text-stone-400 truncate">{photo.location}</p>
+                <p className="text-xs text-[var(--text-muted)] truncate">{photo.location}</p>
               </Link>
             ))}
           </div>

@@ -26,12 +26,24 @@ export function EnhancedLightbox({
   onNavigate,
 }: EnhancedLightboxProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showThumbnails] = useState(true);
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
 
   const currentPhoto = photos[currentIndex];
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < photos.length - 1;
+
+  // Scroll thumbnail into view
+  useEffect(() => {
+    if (thumbnailsRef.current) {
+      const thumbnail = thumbnailsRef.current.children[currentIndex] as HTMLElement;
+      if (thumbnail) {
+        thumbnail.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
+    }
+  }, [currentIndex]);
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
@@ -206,6 +218,40 @@ export function EnhancedLightbox({
           />
         </div>
       </div>
+
+      {/* Thumbnail bar */}
+      {showThumbnails && photos.length > 1 && (
+        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/50 backdrop-blur-sm">
+          <div
+            ref={thumbnailsRef}
+            className="flex gap-2 overflow-x-auto scrollbar-hide justify-center max-w-full"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {photos.map((photo, index) => (
+              <button
+                key={photo.id}
+                onClick={() => {
+                  setIsLoaded(false);
+                  onNavigate(index);
+                }}
+                className={`relative w-16 h-12 flex-shrink-0 rounded overflow-hidden transition-all duration-200 ${
+                  index === currentIndex
+                    ? "ring-2 ring-white opacity-100"
+                    : "opacity-50 hover:opacity-80"
+                }`}
+              >
+                <Image
+                  src={photo.src}
+                  alt={photo.title}
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bottom bar - actions */}
       <div className="shrink-0 p-4 md:p-6 border-t border-white/10">

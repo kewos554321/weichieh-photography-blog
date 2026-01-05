@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 id: true,
                 slug: true,
                 name: true,
-                isPublic: true,
+                visibility: true,
               },
             },
           },

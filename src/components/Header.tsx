@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DarkModeToggle } from "./DarkModeToggle";
 
 export default function Header() {
   const pathname = usePathname();
@@ -14,42 +15,45 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#fafaf8]/90 backdrop-blur-md border-b border-stone-200/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[var(--background)]/90 backdrop-blur-md border-b border-[var(--card-border)]/50 transition-colors duration-300">
       <nav className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="font-serif text-xl md:text-2xl tracking-[0.15em] text-stone-700 font-light">
+        <Link href="/" className="font-serif text-xl md:text-2xl tracking-[0.15em] text-[var(--text-primary)] font-light">
           WeiChieh
         </Link>
-        <div className="flex gap-4 md:gap-8 text-xs tracking-[0.2em] uppercase text-stone-400 font-light">
-          <Link
-            href="/"
-            className={isActive("/") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
-          >
-            Photos
-          </Link>
-          <Link
-            href="/albums"
-            className={isActive("/albums") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
-          >
-            Albums
-          </Link>
-          <Link
-            href="/blog"
-            className={isActive("/blog") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
-          >
-            Blog
-          </Link>
-          <Link
-            href="/map"
-            className={isActive("/map") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}
-          >
-            Map
-          </Link>
-          <Link
-            href="/about"
-            className={`hidden md:block ${isActive("/about") ? "text-[#6b9e9a]" : "hover:text-[#6b9e9a] transition-colors duration-500"}`}
-          >
-            About
-          </Link>
+        <div className="flex items-center gap-4 md:gap-8">
+          <div className="flex gap-4 md:gap-8 text-xs tracking-[0.2em] uppercase text-[var(--text-muted)] font-light">
+            <Link
+              href="/"
+              className={isActive("/") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
+            >
+              Photos
+            </Link>
+            <Link
+              href="/albums"
+              className={isActive("/albums") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
+            >
+              Albums
+            </Link>
+            <Link
+              href="/blog"
+              className={isActive("/blog") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
+            >
+              Blog
+            </Link>
+            <Link
+              href="/map"
+              className={isActive("/map") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
+            >
+              Map
+            </Link>
+            <Link
+              href="/about"
+              className={`hidden md:block ${isActive("/about") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}`}
+            >
+              About
+            </Link>
+          </div>
+          <DarkModeToggle />
         </div>
       </nav>
     </header>
