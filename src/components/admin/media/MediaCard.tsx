@@ -9,7 +9,7 @@ interface MediaCardProps {
   isSelected?: boolean;
   selectable?: boolean;
   showCheckbox?: boolean;
-  onSelect?: (media: Media) => void;
+  onSelect?: (media: Media, shiftKey?: boolean) => void;
   onEdit?: (media: Media) => void;
   onEditImage?: (media: Media) => void;
   onDelete?: (media: Media) => void;
@@ -33,9 +33,9 @@ export function MediaCard({
   onEditImage,
   onDelete,
 }: MediaCardProps) {
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
     if (selectable && onSelect) {
-      onSelect(media);
+      onSelect(media, e.shiftKey);
     } else if (onEdit) {
       onEdit(media);
     }
@@ -44,7 +44,7 @@ export function MediaCard({
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onSelect) {
-      onSelect(media);
+      onSelect(media, e.shiftKey);
     }
   };
 

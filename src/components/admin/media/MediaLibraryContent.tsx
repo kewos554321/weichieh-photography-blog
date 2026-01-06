@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Search,
   Upload,
@@ -14,15 +14,31 @@ import {
   List,
   ChevronUp,
   ChevronDown,
+  ArrowUp,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
 import { MediaEditor } from "./MediaEditor";
 import { MediaDetailModal } from "./MediaDetailModal";
-import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { FolderBreadcrumb } from "./FolderBreadcrumb";
+import { FolderCard } from "./FolderCard";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
 import { MediaListItem } from "./MediaListItem";
+
+interface FolderWithCount extends MediaFolder {
+  _count?: {
+    media: number;
+    children: number;
+  };
+}
+
+interface BreadcrumbItem {
+  id: number;
+  name: string;
+}
 
 type ViewMode = "grid" | "list";
 type GridSize = "small" | "medium" | "large";
@@ -50,7 +66,10 @@ export function MediaLibraryContent({
 }: MediaLibraryContentProps) {
   const [media, setMedia] = useState<Media[]>([]);
   const [tags, setTags] = useState<MediaTag[]>([]);
-  const [folders, setFolders] = useState<MediaFolder[]>([]);
+  const [folders, setFolders] = useState<MediaFolder[]>([]); // All folders for dropdown
+  const [currentFolders, setCurrentFolders] = useState<FolderWithCount[]>([]); // Folders in current directory
+  const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+  const [folderPath, setFolderPath] = useState<BreadcrumbItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -74,20 +93,112 @@ export function MediaLibraryContent({
     new Set(selectedIds)
   );
 
-  // Bulk selection for batch operations (when not in selectable mode)
-  const {
-    selectedCount: bulkSelectedCount,
-    isAllSelected: bulkIsAllSelected,
-    isBulkUpdating,
-    toggleSelect: bulkToggleSelect,
-    toggleSelectAll: bulkToggleSelectAll,
-    clearSelection: bulkClearSelection,
-    setIsBulkUpdating,
-    isSelected: bulkIsSelected,
-  } = useBulkSelection({
-    items: media,
-    getItemId: (m) => m.id,
-  });
+  // Unified selection for folders and media (supports shift-click across both)
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set()); // "folder:123" or "media:456"
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const lastSelectedIndexRef = useRef<number | null>(null);
+
+  // Create combined list for shift-select (folders first, then media)
+  const combinedItems = useMemo(() => {
+    const items: { type: "folder" | "media"; id: number; key: string }[] = [];
+    currentFolders.forEach((f) => items.push({ type: "folder", id: f.id, key: `folder:${f.id}` }));
+    media.forEach((m) => items.push({ type: "media", id: m.id, key: `media:${m.id}` }));
+    return items;
+  }, [currentFolders, media]);
+
+  // Selection helpers
+  const isItemSelected = useCallback((key: string) => selectedItems.has(key), [selectedItems]);
+  const isFolderSelected = useCallback((folderId: number) => selectedItems.has(`folder:${folderId}`), [selectedItems]);
+  const isMediaSelected = useCallback((mediaId: number) => selectedItems.has(`media:${mediaId}`), [selectedItems]);
+
+  // Get selected folder IDs and media IDs separately
+  const selectedFolderIds = useMemo(() => {
+    const ids = new Set<number>();
+    selectedItems.forEach((key) => {
+      if (key.startsWith("folder:")) {
+        ids.add(parseInt(key.split(":")[1]));
+      }
+    });
+    return ids;
+  }, [selectedItems]);
+
+  const selectedMediaIds = useMemo(() => {
+    const ids = new Set<number>();
+    selectedItems.forEach((key) => {
+      if (key.startsWith("media:")) {
+        ids.add(parseInt(key.split(":")[1]));
+      }
+    });
+    return ids;
+  }, [selectedItems]);
+
+  // Toggle selection with shift-click support
+  const toggleItemSelect = useCallback((key: string, shiftKey: boolean = false) => {
+    const currentIndex = combinedItems.findIndex((item) => item.key === key);
+
+    if (shiftKey && lastSelectedIndexRef.current !== null && currentIndex !== -1) {
+      // Shift+click: select range
+      const start = Math.min(lastSelectedIndexRef.current, currentIndex);
+      const end = Math.max(lastSelectedIndexRef.current, currentIndex);
+
+      setSelectedItems((prev) => {
+        const newSet = new Set(prev);
+        for (let i = start; i <= end; i++) {
+          newSet.add(combinedItems[i].key);
+        }
+        return newSet;
+      });
+    } else {
+      // Normal click: toggle single item
+      setSelectedItems((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) {
+          newSet.delete(key);
+        } else {
+          newSet.add(key);
+        }
+        return newSet;
+      });
+    }
+
+    // Update last selected index
+    if (currentIndex !== -1) {
+      lastSelectedIndexRef.current = currentIndex;
+    }
+  }, [combinedItems]);
+
+  // Wrapper functions for folder and media selection
+  const toggleFolderSelect = useCallback((folderId: number, shiftKey?: boolean) => {
+    toggleItemSelect(`folder:${folderId}`, shiftKey || false);
+  }, [toggleItemSelect]);
+
+  const toggleMediaSelect = useCallback((mediaId: number, shiftKey?: boolean) => {
+    toggleItemSelect(`media:${mediaId}`, shiftKey || false);
+  }, [toggleItemSelect]);
+
+  // Combined selection count
+  const totalSelectedCount = selectedItems.size;
+  const bulkSelectedCount = selectedMediaIds.size;
+
+  // Combined clear selection
+  const clearAllSelection = useCallback(() => {
+    setSelectedItems(new Set());
+    lastSelectedIndexRef.current = null;
+  }, []);
+
+  // Combined select all (folders + media)
+  const isAllItemsSelected = combinedItems.length > 0 && selectedItems.size === combinedItems.length;
+
+  const toggleSelectAllItems = useCallback(() => {
+    if (isAllItemsSelected) {
+      // Deselect all
+      setSelectedItems(new Set());
+    } else {
+      // Select all
+      setSelectedItems(new Set(combinedItems.map((item) => item.key)));
+    }
+    lastSelectedIndexRef.current = null;
+  }, [isAllItemsSelected, combinedItems]);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -108,7 +219,16 @@ export function MediaLibraryContent({
 
         if (search) params.set("search", search);
         if (selectedTag) params.set("tags", selectedTag);
-        if (selectedFolder) params.set("folderId", selectedFolder);
+
+        // Use currentFolderId for folder navigation, or selectedFolder for filter
+        if (currentFolderId !== null) {
+          params.set("folderId", currentFolderId.toString());
+        } else if (selectedFolder) {
+          params.set("folderId", selectedFolder);
+        } else if (!search && !selectedTag) {
+          // When at root with no filters, show only root media (no folder)
+          params.set("folderId", "none");
+        }
 
         const res = await fetch(`/api/media?${params}`);
         const data: MediaListResponse = await res.json();
@@ -127,7 +247,7 @@ export function MediaLibraryContent({
         setIsLoadingMore(false);
       }
     },
-    [search, selectedTag, selectedFolder]
+    [search, selectedTag, selectedFolder, currentFolderId]
   );
 
   const fetchTags = useCallback(async () => {
@@ -142,12 +262,45 @@ export function MediaLibraryContent({
 
   const fetchFolders = useCallback(async () => {
     try {
-      const res = await fetch("/api/media/folders");
+      const res = await fetch("/api/media/folders?all=true");
       const data = await res.json();
       setFolders(data);
     } catch (error) {
       console.error("Failed to fetch folders:", error);
     }
+  }, []);
+
+  const fetchCurrentFolders = useCallback(async () => {
+    try {
+      const url = currentFolderId
+        ? `/api/media/folders?parentId=${currentFolderId}`
+        : "/api/media/folders?parentId=null";
+      const res = await fetch(url);
+      const data = await res.json();
+      setCurrentFolders(data);
+    } catch (error) {
+      console.error("Failed to fetch current folders:", error);
+    }
+  }, [currentFolderId]);
+
+  const fetchFolderPath = useCallback(async () => {
+    if (!currentFolderId) {
+      setFolderPath([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/media/folders/${currentFolderId}`);
+      const data = await res.json();
+      setFolderPath(data.path || []);
+    } catch (error) {
+      console.error("Failed to fetch folder path:", error);
+    }
+  }, [currentFolderId]);
+
+  const navigateToFolder = useCallback((folderId: number | null) => {
+    setCurrentFolderId(folderId);
+    setPage(1);
+    setMedia([]);
   }, []);
 
   useEffect(() => {
@@ -156,8 +309,10 @@ export function MediaLibraryContent({
   }, [fetchTags, fetchFolders]);
 
   useEffect(() => {
+    fetchCurrentFolders();
+    fetchFolderPath();
     fetchMedia(1, true);
-  }, [fetchMedia]);
+  }, [fetchCurrentFolders, fetchFolderPath, fetchMedia]);
 
   // Debounced search
   useEffect(() => {
@@ -263,12 +418,16 @@ export function MediaLibraryContent({
       const res = await fetch("/api/media/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newFolderName.trim() }),
+        body: JSON.stringify({
+          name: newFolderName.trim(),
+          parentId: currentFolderId,
+        }),
       });
       if (res.ok) {
         setNewFolderName("");
         setShowFolderForm(false);
         fetchFolders();
+        fetchCurrentFolders();
       } else {
         const data = await res.json();
         alert(data.error || "建立資料夾失敗");
@@ -280,24 +439,98 @@ export function MediaLibraryContent({
     }
   };
 
+  const handleDeleteFolder = async (folderId: number) => {
+    const folder = currentFolders.find((f) => f.id === folderId);
+    if (!folder) return;
+
+    const hasContent = (folder._count?.media || 0) > 0 || (folder._count?.children || 0) > 0;
+    const message = hasContent
+      ? `資料夾「${folder.name}」內有檔案或子資料夾，確定要刪除嗎？（檔案會移到根目錄）`
+      : `確定要刪除資料夾「${folder.name}」嗎？`;
+
+    if (!confirm(message)) return;
+
+    try {
+      const url = hasContent
+        ? `/api/media/folders/${folderId}?recursive=true`
+        : `/api/media/folders/${folderId}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.ok) {
+        fetchFolders();
+        fetchCurrentFolders();
+      } else {
+        const data = await res.json();
+        alert(data.error || "刪除資料夾失敗");
+      }
+    } catch {
+      alert("刪除資料夾失敗");
+    }
+  };
+
+  const handleRenameFolder = async (folder: { id: number; name: string }) => {
+    const newName = prompt("輸入新名稱", folder.name);
+    if (!newName || newName === folder.name) return;
+
+    try {
+      const res = await fetch(`/api/media/folders/${folder.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        fetchFolders();
+        fetchCurrentFolders();
+        fetchFolderPath();
+      } else {
+        const data = await res.json();
+        alert(data.error || "重命名失敗");
+      }
+    } catch {
+      alert("重命名失敗");
+    }
+  };
+
   // Bulk action handlers
   const handleBulkDelete = async () => {
-    if (bulkSelectedCount === 0) return;
-    if (!confirm(`確定要刪除 ${bulkSelectedCount} 個媒體檔案嗎？此操作無法復原。`)) return;
+    if (totalSelectedCount === 0) return;
+
+    const folderCount = selectedFolderIds.size;
+    const fileCount = bulkSelectedCount;
+
+    let message = "確定要刪除 ";
+    if (folderCount > 0 && fileCount > 0) {
+      message += `${folderCount} 個資料夾和 ${fileCount} 個檔案`;
+    } else if (folderCount > 0) {
+      message += `${folderCount} 個資料夾`;
+    } else {
+      message += `${fileCount} 個檔案`;
+    }
+    message += " 嗎？此操作無法復原。";
+
+    if (!confirm(message)) return;
     setIsBulkUpdating(true);
     try {
-      const promises = media
-        .filter((m) => bulkIsSelected(m.id))
+      // Delete folders first
+      const folderPromises = Array.from(selectedFolderIds).map((folderId) =>
+        fetch(`/api/media/folders/${folderId}?recursive=true`, { method: "DELETE" })
+      );
+
+      // Delete media files
+      const mediaPromises = media
+        .filter((m) => selectedMediaIds.has(m.id))
         .map((item) =>
           fetch(`/api/media/${item.id}`, { method: "DELETE" })
         );
-      const results = await Promise.all(promises);
+
+      const results = await Promise.all([...folderPromises, ...mediaPromises]);
       const failedCount = results.filter((r) => !r.ok).length;
       if (failedCount > 0) {
-        alert(`有 ${failedCount} 個檔案刪除失敗（可能正在被使用）`);
+        alert(`有 ${failedCount} 個項目刪除失敗`);
       }
       fetchMedia(1, true);
-      bulkClearSelection();
+      fetchCurrentFolders();
+      fetchFolders();
+      clearAllSelection();
     } catch {
       alert("批次刪除失敗");
     } finally {
@@ -305,22 +538,48 @@ export function MediaLibraryContent({
     }
   };
 
-  const handleBulkMoveFolder = async (folderId: string) => {
-    if (bulkSelectedCount === 0) return;
+  const handleBulkMoveFolder = async (targetFolderId: string) => {
+    if (totalSelectedCount === 0) return;
+
+    const targetId = targetFolderId === "none" ? null : parseInt(targetFolderId);
+
+    // Check if trying to move folder into itself or its children
+    if (targetId !== null && selectedFolderIds.has(targetId)) {
+      alert("無法將資料夾移動到自己裡面");
+      return;
+    }
+
     setIsBulkUpdating(true);
     try {
-      const promises = media
-        .filter((m) => bulkIsSelected(m.id))
+      // Move selected folders
+      const folderPromises = Array.from(selectedFolderIds).map((folderId) =>
+        fetch(`/api/media/folders/${folderId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ parentId: targetId }),
+        })
+      );
+
+      // Move media files
+      const mediaPromises = media
+        .filter((m) => selectedMediaIds.has(m.id))
         .map((item) =>
           fetch(`/api/media/${item.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ folderId: folderId === "none" ? null : parseInt(folderId) }),
+            body: JSON.stringify({ folderId: targetId }),
           })
         );
-      await Promise.all(promises);
+
+      const results = await Promise.all([...folderPromises, ...mediaPromises]);
+      const failedCount = results.filter((r) => !r.ok).length;
+      if (failedCount > 0) {
+        alert(`有 ${failedCount} 個項目移動失敗`);
+      }
       fetchMedia(1, true);
-      bulkClearSelection();
+      fetchCurrentFolders();
+      fetchFolders();
+      clearAllSelection();
     } catch {
       alert("批次移動失敗");
     } finally {
@@ -328,13 +587,16 @@ export function MediaLibraryContent({
     }
   };
 
+  // Filter out selected folders from move targets (can't move folder into itself)
+  const availableMoveTargets = folders.filter(f => !selectedFolderIds.has(f.id));
+
   const bulkActions: BulkAction[] = [
     {
       key: "folder",
       label: "Move to...",
       options: [
-        { value: "none", label: "未分類" },
-        ...folders.map((f) => ({ value: f.id.toString(), label: f.name })),
+        { value: "none", label: "Root (未分類)" },
+        ...availableMoveTargets.map((f) => ({ value: f.id.toString(), label: f.name })),
       ],
       onAction: (value) => value && handleBulkMoveFolder(value),
     },
@@ -387,7 +649,17 @@ export function MediaLibraryContent({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Bulk Operation Overlay */}
+      {isBulkUpdating && (
+        <div className="absolute inset-0 bg-white/60 z-50 flex items-center justify-center rounded-lg">
+          <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-lg border border-stone-200">
+            <Loader2 className="w-5 h-5 animate-spin text-stone-600" />
+            <span className="text-sm font-medium text-stone-700">Processing...</span>
+          </div>
+        </div>
+      )}
+
       {/* Header - only show when not in picker mode */}
       {!selectable && (
         <div className="flex items-center justify-between">
@@ -402,12 +674,13 @@ export function MediaLibraryContent({
                   placeholder="Folder name..."
                   className="px-3 py-1.5 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-40"
                   onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+                  disabled={isBulkUpdating}
                   autoFocus
                 />
                 <button
                   onClick={handleCreateFolder}
-                  disabled={isCreatingFolder || !newFolderName.trim()}
-                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50"
+                  disabled={isCreatingFolder || !newFolderName.trim() || isBulkUpdating}
+                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Create"
                 >
                   {isCreatingFolder ? (
@@ -421,7 +694,8 @@ export function MediaLibraryContent({
                     setShowFolderForm(false);
                     setNewFolderName("");
                   }}
-                  className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg transition-colors"
+                  disabled={isBulkUpdating}
+                  className="p-2 text-stone-500 hover:bg-stone-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Cancel"
                 >
                   <X className="w-4 h-4" />
@@ -431,14 +705,16 @@ export function MediaLibraryContent({
               <>
                 <button
                   onClick={() => setShowFolderForm(true)}
-                  className="p-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
+                  disabled={isBulkUpdating}
+                  className="p-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="New Folder"
                 >
                   <FolderPlus className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowUploader(true)}
-                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
+                  disabled={isBulkUpdating}
+                  className="p-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Upload"
                 >
                   <Upload className="w-4 h-4" />
@@ -449,8 +725,28 @@ export function MediaLibraryContent({
         </div>
       )}
 
+      {/* Breadcrumb Navigation */}
+      <div className={`flex items-center gap-3 ${isBulkUpdating ? "pointer-events-none opacity-50" : ""}`}>
+        <FolderBreadcrumb path={folderPath} onNavigate={navigateToFolder} />
+        {currentFolderId && (
+          <button
+            onClick={() => {
+              // Navigate to parent
+              const parentIndex = folderPath.length - 2;
+              const parentId = parentIndex >= 0 ? folderPath[parentIndex].id : null;
+              navigateToFolder(parentId);
+            }}
+            disabled={isBulkUpdating}
+            className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Go up"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className={`flex flex-wrap gap-3 items-center ${isBulkUpdating ? "pointer-events-none opacity-50" : ""}`}>
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -584,61 +880,95 @@ export function MediaLibraryContent({
       {/* Bulk Action Bar (only show when not in picker/selectable mode) */}
       {!selectable && (
         <BulkActionBar
-          selectedCount={bulkSelectedCount}
-          onClear={bulkClearSelection}
+          selectedCount={totalSelectedCount}
+          onClear={clearAllSelection}
           actions={bulkActions}
           disabled={isBulkUpdating}
         />
       )}
 
-      {/* Grid */}
+      {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-stone-400" />
         </div>
-      ) : media.length === 0 ? (
+      ) : currentFolders.length === 0 && media.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-stone-400">
           <ImageIcon className="w-16 h-16 mb-4" />
-          <p className="text-lg">尚無媒體</p>
-          <p className="text-sm mt-1">點擊上傳按鈕新增圖片</p>
+          <p className="text-lg">此資料夾是空的</p>
+          <p className="text-sm mt-1">點擊上傳按鈕新增圖片，或建立子資料夾</p>
         </div>
       ) : (
         <>
-          {viewMode === "grid" ? (
-            <div className={`grid ${GRID_CLASSES[gridSize]} gap-4`}>
-              {media.map((item) => (
-                <MediaCard
-                  key={item.id}
-                  media={item}
-                  isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
-                  selectable={selectable}
-                  showCheckbox={!selectable}
-                  onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
-                  onEdit={() => setViewingMedia(item)}
-                  onEditImage={() => setEditingMedia(item)}
-                  onDelete={handleDelete}
-                />
-              ))}
+          {/* Folders Section */}
+          {currentFolders.length > 0 && viewMode === "grid" && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-stone-500 mb-3">
+                Folders ({currentFolders.length})
+              </h3>
+              <div className={`grid ${GRID_CLASSES[gridSize]} gap-4`}>
+                {currentFolders.map((folder) => (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    isSelected={isFolderSelected(folder.id)}
+                    showCheckbox={!selectable}
+                    onOpen={navigateToFolder}
+                    onSelect={toggleFolderSelect}
+                    onRename={handleRenameFolder}
+                    onDelete={handleDeleteFolder}
+                  />
+                ))}
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* Files Section - Grid View */}
+          {media.length > 0 && viewMode === "grid" && (
+            <div>
+              {currentFolders.length > 0 && (
+                <h3 className="text-sm font-medium text-stone-500 mb-3">
+                  Files ({media.length})
+                </h3>
+              )}
+              <div className={`grid ${GRID_CLASSES[gridSize]} gap-4`}>
+                {media.map((item) => (
+                  <MediaCard
+                    key={item.id}
+                    media={item}
+                    isSelected={selectable ? selectedMedia.has(item.id) : isMediaSelected(item.id)}
+                    selectable={selectable}
+                    showCheckbox={!selectable}
+                    onSelect={selectable ? handleSelect : (m, shiftKey) => toggleMediaSelect(m.id, shiftKey)}
+                    onEdit={() => setViewingMedia(item)}
+                    onEditImage={() => setEditingMedia(item)}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* List View - Folders & Files */}
+          {viewMode === "list" && (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-stone-50 border-b border-stone-200">
                     <tr>
                       {!selectable && (
-                        <th className="px-4 py-3 text-left">
+                        <th className="px-4 py-3 text-left w-10">
                           <input
                             type="checkbox"
-                            checked={bulkIsAllSelected}
-                            onChange={bulkToggleSelectAll}
+                            checked={isAllItemsSelected}
+                            onChange={toggleSelectAllItems}
                             className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                           />
                         </th>
                       )}
                       {!compactMode && (
-                        <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
-                          Thumbnail
+                        <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider w-20">
+                          Preview
                         </th>
                       )}
                       <th
@@ -646,12 +976,12 @@ export function MediaLibraryContent({
                         onClick={() => handleSort("filename")}
                       >
                         <div className="flex items-center gap-1">
-                          Filename
+                          Name
                           <SortIcon field="filename" />
                         </div>
                       </th>
                       <th
-                        className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700 w-24"
                         onClick={() => handleSort("size")}
                       >
                         <div className="flex items-center gap-1">
@@ -659,11 +989,11 @@ export function MediaLibraryContent({
                           <SortIcon field="size" />
                         </div>
                       </th>
-                      <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
+                      <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider w-28">
                         Dimensions
                       </th>
                       <th
-                        className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700 w-28"
                         onClick={() => handleSort("folder")}
                       >
                         <div className="flex items-center gap-1">
@@ -672,7 +1002,7 @@ export function MediaLibraryContent({
                         </div>
                       </th>
                       <th
-                        className="hidden xl:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                        className="hidden xl:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700 w-28"
                         onClick={() => handleSort("createdAt")}
                       >
                         <div className="flex items-center gap-1">
@@ -680,21 +1010,97 @@ export function MediaLibraryContent({
                           <SortIcon field="createdAt" />
                         </div>
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider w-32">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-200">
+                    {/* Folder Rows */}
+                    {currentFolders.map((folder) => (
+                      <tr
+                        key={`folder-${folder.id}`}
+                        className={`hover:bg-stone-50 cursor-pointer ${isFolderSelected(folder.id) ? "bg-stone-50" : ""}`}
+                        onDoubleClick={() => navigateToFolder(folder.id)}
+                      >
+                        {!selectable && (
+                          <td className="px-4 py-3 w-10">
+                            <input
+                              type="checkbox"
+                              checked={isFolderSelected(folder.id)}
+                              onChange={() => toggleFolderSelect(folder.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
+                            />
+                          </td>
+                        )}
+                        {!compactMode && (
+                          <td className="px-4 py-3 w-20">
+                            <div className="w-16 h-12 flex items-center justify-center">
+                              <FolderOpen className="w-10 h-8 text-amber-400" />
+                            </div>
+                          </td>
+                        )}
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => navigateToFolder(folder.id)}
+                            className="font-medium text-stone-900 hover:text-stone-700 flex items-center gap-2"
+                          >
+                            {compactMode && <FolderOpen className="w-4 h-4 text-amber-400" />}
+                            {folder.name}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-stone-500 w-24">
+                          —
+                        </td>
+                        <td className="hidden md:table-cell px-4 py-3 text-sm text-stone-500 w-28">
+                          {(folder._count?.children || 0) > 0 && `${folder._count?.children} folders`}
+                          {(folder._count?.children || 0) > 0 && (folder._count?.media || 0) > 0 && ", "}
+                          {(folder._count?.media || 0) > 0 && `${folder._count?.media} files`}
+                          {(folder._count?.children || 0) === 0 && (folder._count?.media || 0) === 0 && "Empty"}
+                        </td>
+                        <td className="hidden lg:table-cell px-4 py-3 text-sm text-stone-400 w-28">
+                          —
+                        </td>
+                        <td className="hidden xl:table-cell px-4 py-3 text-sm text-stone-500 w-28">
+                          —
+                        </td>
+                        <td className="px-4 py-3 text-right w-32">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRenameFolder(folder);
+                              }}
+                              className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
+                              title="Rename"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteFolder(folder.id);
+                              }}
+                              className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {/* File Rows */}
                     {sortedMedia.map((item) => (
                       <MediaListItem
                         key={item.id}
                         media={item}
-                        isSelected={selectable ? selectedMedia.has(item.id) : bulkIsSelected(item.id)}
+                        isSelected={selectable ? selectedMedia.has(item.id) : isMediaSelected(item.id)}
                         selectable={selectable}
                         showCheckbox={!selectable}
                         compactMode={compactMode}
-                        onSelect={selectable ? handleSelect : (m) => bulkToggleSelect(m.id)}
+                        onSelect={selectable ? handleSelect : (m, shiftKey) => toggleMediaSelect(m.id, shiftKey)}
                         onEdit={() => setViewingMedia(item)}
                         onEditImage={() => setEditingMedia(item)}
                         onDelete={handleDelete}
