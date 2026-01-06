@@ -64,6 +64,8 @@ export async function GET(request: NextRequest) {
           orderBy: { sortOrder: "asc" },
           take: 4, // 預覽用只取前 4 張
         },
+        category: true,
+        tags: true,
         _count: {
           select: { photos: true },
         },

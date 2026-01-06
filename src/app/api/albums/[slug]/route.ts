@@ -29,6 +29,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           },
           orderBy: { sortOrder: "asc" },
         },
+        category: true,
+        tags: true,
       },
     });
 
@@ -128,6 +130,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         sortOrder: body.sortOrder,
         // 隱私控制欄位（簡化版）
         ...(body.visibility !== undefined && { visibility: body.visibility }),
+        // 分類與標籤
+        ...(body.categoryId !== undefined && { categoryId: body.categoryId }),
+        ...(body.tagIds && {
+          tags: {
+            set: body.tagIds.map((tagId: number) => ({ id: tagId })),
+          },
+        }),
+      },
+      include: {
+        category: true,
+        tags: true,
       },
     });
 
