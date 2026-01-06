@@ -14,11 +14,13 @@ import {
   List,
   ChevronUp,
   ChevronDown,
+  Camera,
 } from "lucide-react";
 import { MediaCard } from "./MediaCard";
 import { MediaUploader } from "./MediaUploader";
 import { MediaEditor } from "./MediaEditor";
 import { MediaDetailModal } from "./MediaDetailModal";
+import { BatchPublishPhotosModal } from "./BatchPublishPhotosModal";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
@@ -69,6 +71,7 @@ export function MediaLibraryContent({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
+  const [showBatchPublish, setShowBatchPublish] = useState(false);
   // For external picker selection
   const [selectedMedia, setSelectedMedia] = useState<Set<number>>(
     new Set(selectedIds)
@@ -77,6 +80,7 @@ export function MediaLibraryContent({
   // Bulk selection for batch operations (when not in selectable mode)
   const {
     selectedCount: bulkSelectedCount,
+    selectedItems: bulkSelectedItems,
     isAllSelected: bulkIsAllSelected,
     isBulkUpdating,
     toggleSelect: bulkToggleSelect,
@@ -329,6 +333,12 @@ export function MediaLibraryContent({
   };
 
   const bulkActions: BulkAction[] = [
+    {
+      key: "publish",
+      label: "Publish as Photos",
+      icon: <Camera className="w-4 h-4" />,
+      onAction: () => setShowBatchPublish(true),
+    },
     {
       key: "folder",
       label: "Move to...",
@@ -746,6 +756,19 @@ export function MediaLibraryContent({
               prev.map((m) => (m.id === updated.id ? updated : m))
             );
             setViewingMedia(updated);
+          }}
+        />
+      )}
+
+      {/* Batch Publish Modal */}
+      {showBatchPublish && bulkSelectedItems.length > 0 && (
+        <BatchPublishPhotosModal
+          mediaItems={bulkSelectedItems}
+          onClose={() => setShowBatchPublish(false)}
+          onComplete={() => {
+            setShowBatchPublish(false);
+            bulkClearSelection();
+            fetchMedia(1, true);
           }}
         />
       )}
