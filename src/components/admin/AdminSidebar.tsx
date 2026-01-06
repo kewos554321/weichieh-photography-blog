@@ -7,18 +7,17 @@ import {
   FileText,
   ChevronLeft,
   Settings,
-  Layers,
   User,
-  List,
   Globe,
   BarChart3,
   FolderOpen,
   Images,
   MessageSquare,
   Key,
+  Tag,
 } from "lucide-react";
 
-type Section = "photos" | "albums" | "articles" | "media" | "tokens" | "comments" | "analytics" | "settings";
+type Section = "photos" | "albums" | "articles" | "media" | "categories-tags" | "tokens" | "comments" | "analytics" | "settings";
 
 interface SubNavItem {
   label: string;
@@ -40,10 +39,6 @@ const navItems: NavItem[] = [
     label: "Photos",
     icon: ImageIcon,
     href: "/admin/photos",
-    subItems: [
-      { label: "All Photos", href: "/admin/photos", icon: List },
-      { label: "Taxonomy", href: "/admin/photos/taxonomy", icon: Layers },
-    ],
   },
   {
     section: "albums",
@@ -53,23 +48,21 @@ const navItems: NavItem[] = [
   },
   {
     section: "articles",
-    label: "Blog",
+    label: "Posts",
     icon: FileText,
     href: "/admin/articles",
-    subItems: [
-      { label: "All Posts", href: "/admin/articles", icon: List },
-      { label: "Taxonomy", href: "/admin/articles/taxonomy", icon: Layers },
-    ],
   },
   {
     section: "media",
     label: "Media",
     icon: FolderOpen,
     href: "/admin/media",
-    subItems: [
-      { label: "Library", href: "/admin/media", icon: List },
-      { label: "Taxonomy", href: "/admin/media/taxonomy", icon: Layers },
-    ],
+  },
+  {
+    section: "categories-tags",
+    label: "Categories & Tags",
+    icon: Tag,
+    href: "/admin/categories-tags",
   },
   {
     section: "tokens",
@@ -109,6 +102,7 @@ export function AdminSidebar() {
     if (pathname.startsWith("/admin/albums")) return "albums";
     if (pathname.startsWith("/admin/articles")) return "articles";
     if (pathname.startsWith("/admin/media")) return "media";
+    if (pathname.startsWith("/admin/categories-tags")) return "categories-tags";
     if (pathname.startsWith("/admin/tokens")) return "tokens";
     if (pathname.startsWith("/admin/comments")) return "comments";
     if (pathname.startsWith("/admin/analytics")) return "analytics";

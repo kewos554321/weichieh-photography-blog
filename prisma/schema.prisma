@@ -179,12 +179,37 @@ model Album {
   // 隱私控制欄位（簡化版）
   visibility String @default("public") // "public" | "private"
 
+  // 分類與標籤
+  category   AlbumCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId Int?
+  tags       AlbumTag[]
+
   // Token 權限（多對多）
   accessTokens AccessTokenAlbum[]
 
   @@index([slug])
   @@index([sortOrder])
   @@index([visibility])
+  @@index([categoryId])
+}
+
+model AlbumCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  albums    Album[]
+  createdAt DateTime @default(now())
+
+  @@index([slug])
+  @@index([sortOrder])
+}
+
+model AlbumTag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  albums    Album[]
+  createdAt DateTime @default(now())
 }
 
 model AlbumPhoto {
