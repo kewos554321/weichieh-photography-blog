@@ -18,6 +18,7 @@ import {
   EyeOff,
   Clock,
   Upload,
+  Star,
 } from "lucide-react";
 
 export function PhotoListContent() {
@@ -31,6 +32,8 @@ export function PhotoListContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+  const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
+  const [isSettingCover, setIsSettingCover] = useState(false);
 
   const {
     selectedCount,
@@ -84,11 +87,40 @@ export function PhotoListContent() {
     }
   }, []);
 
+  const fetchCoverPhoto = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings/cover-photo");
+      const data = await res.json();
+      setCoverPhotoId(data.photoId || null);
+    } catch {
+      console.error("Failed to fetch cover photo");
+    }
+  }, []);
+
+  const handleSetCover = async (photoId: number) => {
+    setIsSettingCover(true);
+    try {
+      const res = await fetch("/api/settings/cover-photo", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId }),
+      });
+      if (res.ok) {
+        setCoverPhotoId(photoId);
+      }
+    } catch {
+      alert("設定封面失敗");
+    } finally {
+      setIsSettingCover(false);
+    }
+  };
+
   useEffect(() => {
     fetchPhotos();
     fetchTags();
     fetchCategories();
-  }, [fetchPhotos, fetchTags, fetchCategories]);
+    fetchCoverPhoto();
+  }, [fetchPhotos, fetchTags, fetchCategories, fetchCoverPhoto]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這張照片嗎？")) return;
@@ -384,6 +416,26 @@ export function PhotoListContent() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleSetCover(photo.id)}
+                          disabled={isSettingCover || coverPhotoId === photo.id || photo.visibility !== "public"}
+                          className={`p-2 rounded transition-colors ${
+                            coverPhotoId === photo.id
+                              ? "text-amber-500 bg-amber-50"
+                              : photo.visibility !== "public"
+                                ? "text-stone-300 cursor-not-allowed"
+                                : "text-stone-400 hover:text-amber-500 hover:bg-amber-50"
+                          }`}
+                          title={
+                            coverPhotoId === photo.id
+                              ? "目前首頁封面"
+                              : photo.visibility !== "public"
+                                ? "私人照片無法設為首頁封面"
+                                : "設為首頁封面"
+                          }
+                        >
+                          <Star className={`w-4 h-4 ${coverPhotoId === photo.id ? "fill-current" : ""}`} />
+                        </button>
                         <button
                           onClick={() => handleEdit(photo)}
                           className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"

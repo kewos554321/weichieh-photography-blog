@@ -52,7 +52,7 @@ export function FolderCard({
           ? "border-stone-900 ring-2 ring-stone-900/20"
           : "border-stone-200 hover:border-stone-300"
       }`}
-      onDoubleClick={() => onOpen(folder.id)}
+      onClick={() => onOpen(folder.id)}
     >
       {/* Checkbox */}
       {showCheckbox && (
@@ -116,10 +116,7 @@ export function FolderCard({
       </div>
 
       {/* Folder Icon */}
-      <div
-        className="flex flex-col items-center gap-2"
-        onClick={() => onOpen(folder.id)}
-      >
+      <div className="flex flex-col items-center gap-2">
         <div className="w-16 h-14 flex items-center justify-center">
           <Folder className="w-14 h-12 text-amber-400 fill-amber-100" />
         </div>

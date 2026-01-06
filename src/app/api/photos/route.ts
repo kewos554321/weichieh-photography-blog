@@ -5,8 +5,8 @@ import { checkAndPublish } from "@/lib/publish";
 // GET /api/photos - 取得照片列表
 export async function GET(request: NextRequest) {
   try {
-    // 自動發布到期的排程內容（每 60 秒最多檢查一次）
-    await checkAndPublish();
+    // 自動發布到期的排程內容（非阻塞，不等待完成）
+    checkAndPublish().catch(() => {});
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const tag = searchParams.get("tag");

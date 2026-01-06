@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
-import { ImageIcon, X, FolderOpen } from "lucide-react";
+import { ImageIcon, X, FolderOpen, Loader2 } from "lucide-react";
 import { MediaLibraryContent } from "./MediaLibraryContent";
 import type { Media } from "../types";
 
@@ -95,11 +95,13 @@ export function MediaPicker({
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
-              <MediaLibraryContent
-                selectable
-                multiSelect={false}
-                onSelect={handleSelect}
-              />
+              <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-stone-400" /></div>}>
+                <MediaLibraryContent
+                  selectable
+                  multiSelect={false}
+                  onSelect={handleSelect}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

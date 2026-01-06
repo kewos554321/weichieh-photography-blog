@@ -89,6 +89,7 @@ export interface Photo {
   story: string;
   behindTheScene?: string;
   status: "draft" | "scheduled" | "published";
+  visibility: "public" | "private";
   publishedAt?: string;
   tags: PhotoTag[];
 }

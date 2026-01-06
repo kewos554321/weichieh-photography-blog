@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useUpload } from "@/hooks/useUpload";
 import { useExifExtraction } from "@/hooks/useExifExtraction";
 import type { Photo, PhotoTag, Category, Media } from "../types";
@@ -913,11 +913,13 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
                   </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
-                  <MediaLibraryContent
-                    selectable
-                    multiSelect={false}
-                    onSelect={handleMediaSelect}
-                  />
+                  <Suspense fallback={<div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-stone-400" /></div>}>
+                    <MediaLibraryContent
+                      selectable
+                      multiSelect={false}
+                      onSelect={handleMediaSelect}
+                    />
+                  </Suspense>
                 </div>
               </div>
             </div>

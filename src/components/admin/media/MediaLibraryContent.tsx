@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Search,
   Upload,
@@ -66,11 +67,26 @@ export function MediaLibraryContent({
   onSelect,
   selectedIds = [],
 }: MediaLibraryContentProps) {
+  // URL-based navigation only for main media page (non-selectable mode)
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // State-based folderId for selectable mode (modals)
+  const [stateFolderId, setStateFolderId] = useState<number | null>(null);
+
+  // Get folderId from URL query parameter (only in non-selectable mode)
+  const urlFolderId = searchParams.get("folderId");
+  const currentFolderId = selectable
+    ? stateFolderId
+    : urlFolderId
+      ? parseInt(urlFolderId)
+      : null;
+
   const [media, setMedia] = useState<Media[]>([]);
   const [tags, setTags] = useState<MediaTag[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]); // All folders for dropdown
   const [currentFolders, setCurrentFolders] = useState<FolderWithCount[]>([]); // Folders in current directory
-  const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
   const [folderPath, setFolderPath] = useState<BreadcrumbItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -306,10 +322,23 @@ export function MediaLibraryContent({
   }, [currentFolderId]);
 
   const navigateToFolder = useCallback((folderId: number | null) => {
-    setCurrentFolderId(folderId);
+    if (selectable) {
+      // In selectable mode (modals), use state-based navigation
+      setStateFolderId(folderId);
+    } else {
+      // In main media page, use URL-based navigation for browser back button support
+      const params = new URLSearchParams(searchParams.toString());
+      if (folderId !== null) {
+        params.set("folderId", folderId.toString());
+      } else {
+        params.delete("folderId");
+      }
+      const queryString = params.toString();
+      router.push(queryString ? `${pathname}?${queryString}` : pathname);
+    }
     setPage(1);
     setMedia([]);
-  }, []);
+  }, [selectable, searchParams, router, pathname]);
 
   useEffect(() => {
     fetchTags();
@@ -1035,7 +1064,7 @@ export function MediaLibraryContent({
                       <tr
                         key={`folder-${folder.id}`}
                         className={`hover:bg-stone-50 cursor-pointer ${isFolderSelected(folder.id) ? "bg-stone-50" : ""}`}
-                        onDoubleClick={() => navigateToFolder(folder.id)}
+                        onClick={() => navigateToFolder(folder.id)}
                       >
                         {!selectable && (
                           <td className="px-4 py-3 w-10">
@@ -1056,13 +1085,10 @@ export function MediaLibraryContent({
                           </td>
                         )}
                         <td className="px-4 py-3">
-                          <button
-                            onClick={() => navigateToFolder(folder.id)}
-                            className="font-medium text-stone-900 hover:text-stone-700 flex items-center gap-2"
-                          >
+                          <span className="font-medium text-stone-900 flex items-center gap-2">
                             {compactMode && <FolderOpen className="w-4 h-4 text-amber-400" />}
                             {folder.name}
-                          </button>
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-stone-500 w-24">
                           —
