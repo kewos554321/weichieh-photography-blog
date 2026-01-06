@@ -144,16 +144,23 @@ model Media {
 }
 
 model MediaFolder {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  slug      String   @unique
-  sortOrder Int      @default(0)
+  id        Int            @id @default(autoincrement())
+  name      String
+  slug      String         @unique
+  sortOrder Int            @default(0)
   media     Media[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
+  // 階層結構
+  parentId  Int?
+  parent    MediaFolder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MediaFolder[]  @relation("FolderHierarchy")
+
+  @@unique([parentId, name]) // 同一層內名稱不重複
   @@index([slug])
   @@index([sortOrder])
+  @@index([parentId])
 }
 
 model MediaTag {

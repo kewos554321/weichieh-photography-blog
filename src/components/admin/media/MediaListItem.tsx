@@ -10,7 +10,7 @@ interface MediaListItemProps {
   selectable?: boolean;
   showCheckbox?: boolean;
   compactMode?: boolean;
-  onSelect?: (media: Media) => void;
+  onSelect?: (media: Media, shiftKey?: boolean) => void;
   onEdit?: (media: Media) => void;
   onEditImage?: (media: Media) => void;
   onDelete?: (media: Media) => void;
@@ -43,9 +43,9 @@ export function MediaListItem({
   onEditImage,
   onDelete,
 }: MediaListItemProps) {
-  const handleRowClick = () => {
+  const handleRowClick = (e: React.MouseEvent) => {
     if (selectable && onSelect) {
-      onSelect(media);
+      onSelect(media, e.shiftKey);
     } else if (onEdit) {
       onEdit(media);
     }
@@ -62,7 +62,7 @@ export function MediaListItem({
           <input
             type="checkbox"
             checked={isSelected}
-            onChange={() => onSelect?.(media)}
+            onChange={(e) => onSelect?.(media, e.nativeEvent instanceof MouseEvent ? (e.nativeEvent as MouseEvent).shiftKey : false)}
             onClick={(e) => e.stopPropagation()}
             className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
           />
