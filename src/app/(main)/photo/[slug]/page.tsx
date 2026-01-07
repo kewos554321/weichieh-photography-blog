@@ -30,6 +30,19 @@ interface LinkedAlbum {
   };
 }
 
+interface RelatedPhoto {
+  slug: string;
+  src: string;
+  title: string;
+  location: string;
+  category: string;
+}
+
+interface NavigationPhoto {
+  slug: string;
+  title: string;
+}
+
 interface Photo {
   id: number;
   slug: string;
@@ -45,13 +58,16 @@ interface Photo {
   tags: PhotoTag[];
   article?: LinkedArticle;
   albums?: LinkedAlbum[];
+  related?: RelatedPhoto[];
+  navigation?: {
+    prev: NavigationPhoto | null;
+    next: NavigationPhoto | null;
+  };
 }
 
 export default function PhotoPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string | null>(null);
   const [photo, setPhoto] = useState<Photo | null>(null);
-  const [relatedPhotos, setRelatedPhotos] = useState<Photo[]>([]);
-  const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [commentRefreshKey, setCommentRefreshKey] = useState(0);
@@ -65,8 +81,8 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
 
     const fetchPhoto = async () => {
       try {
-        // Fetch single photo
-        const res = await fetch(`/api/photos/${slug}`);
+        // Fetch photo with context (related + navigation) in one request
+        const res = await fetch(`/api/photos/${slug}?context=true`);
 
         if (!res.ok) {
           setPhoto(null);
@@ -76,23 +92,12 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         const data = await res.json();
         setPhoto(data);
 
-        // Track view
+        // Track view (fire and forget)
         fetch("/api/analytics/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "photo", slug }),
         }).catch(() => {/* ignore tracking errors */});
-
-        // Fetch all photos for navigation and related
-        const allRes = await fetch("/api/photos?limit=100");
-        const allData = await allRes.json();
-        setAllPhotos(allData.photos || []);
-
-        // Get related photos (same category)
-        const related = (allData.photos || [])
-          .filter((p: Photo) => p.category === data.category && p.slug !== data.slug)
-          .slice(0, 4);
-        setRelatedPhotos(related);
       } catch (error) {
         console.error("Failed to fetch photo:", error);
         setPhoto(null);
@@ -104,9 +109,10 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
     fetchPhoto();
   }, [slug]);
 
-  const currentIndex = photo ? allPhotos.findIndex((p) => p.slug === photo.slug) : -1;
-  const prevPhoto = currentIndex > 0 ? allPhotos[currentIndex - 1] : null;
-  const nextPhoto = currentIndex < allPhotos.length - 1 ? allPhotos[currentIndex + 1] : null;
+  // Get navigation from photo context
+  const prevPhoto = photo?.navigation?.prev || null;
+  const nextPhoto = photo?.navigation?.next || null;
+  const relatedPhotos = photo?.related || [];
 
   if (isLoading) {
     return (
@@ -144,6 +150,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
               src={photo.src}
               alt={photo.title}
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className={`object-cover transition-all duration-700 ${isImageLoaded ? "opacity-100" : "opacity-0"} group-hover:scale-[1.02]`}
               priority
               onLoad={() => setIsImageLoaded(true)}
@@ -313,6 +320,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
                       src={related.src}
                       alt={related.title}
                       fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-stone-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

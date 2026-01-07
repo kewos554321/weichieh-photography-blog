@@ -80,11 +80,16 @@ export function ArticleListContent() {
     }
   }, []);
 
+  // Fetch tags and categories only once on mount
   useEffect(() => {
-    fetchArticles();
     fetchTags();
     fetchCategories();
-  }, [fetchArticles, fetchTags, fetchCategories]);
+  }, [fetchTags, fetchCategories]);
+
+  // Fetch articles when filters change
+  useEffect(() => {
+    fetchArticles();
+  }, [fetchArticles]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這篇文章嗎？")) return;

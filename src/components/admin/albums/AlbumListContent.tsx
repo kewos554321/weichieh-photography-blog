@@ -124,11 +124,16 @@ export function AlbumListContent() {
     }
   }, []);
 
+  // Fetch all data on mount (albums list doesn't depend on filters - filtered client-side)
   useEffect(() => {
     fetchAlbums();
+  }, [fetchAlbums]);
+
+  // Fetch categories and tags only once on mount
+  useEffect(() => {
     fetchCategories();
     fetchTags();
-  }, [fetchAlbums, fetchCategories, fetchTags]);
+  }, [fetchCategories, fetchTags]);
 
   // Filter albums
   const filteredAlbums = albums.filter((album) => {

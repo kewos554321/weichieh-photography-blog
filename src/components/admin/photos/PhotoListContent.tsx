@@ -115,12 +115,17 @@ export function PhotoListContent() {
     }
   };
 
+  // Fetch tags, categories, and cover photo only once on mount
   useEffect(() => {
-    fetchPhotos();
     fetchTags();
     fetchCategories();
     fetchCoverPhoto();
-  }, [fetchPhotos, fetchTags, fetchCategories, fetchCoverPhoto]);
+  }, [fetchTags, fetchCategories, fetchCoverPhoto]);
+
+  // Fetch photos when filters change
+  useEffect(() => {
+    fetchPhotos();
+  }, [fetchPhotos]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這張照片嗎？")) return;

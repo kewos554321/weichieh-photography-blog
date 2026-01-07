@@ -20,6 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
+    const includeContext = searchParams.get("context") === "true";
 
     const article = await prisma.article.findUnique({
       where: { slug },
@@ -54,6 +55,58 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           { status: 404 }
         );
       }
+    }
+
+    // If context is requested, fetch related articles and navigation
+    if (includeContext && !admin) {
+      const baseWhere = {
+        status: "published" as const,
+        OR: [{ publishedAt: null }, { publishedAt: { lte: new Date() } }],
+      };
+
+      // Fetch related articles (same category, exclude current, limit 2)
+      const relatedArticles = await prisma.article.findMany({
+        where: {
+          ...baseWhere,
+          category: article.category,
+          slug: { not: slug },
+        },
+        select: {
+          slug: true,
+          title: true,
+          cover: true,
+          category: true,
+          readTime: true,
+        },
+        orderBy: { date: "desc" },
+        take: 2,
+      });
+
+      // Fetch prev/next articles for navigation (by date order)
+      const [prevArticle, nextArticle] = await Promise.all([
+        prisma.article.findFirst({
+          where: {
+            ...baseWhere,
+            date: { lt: article.date },
+          },
+          select: { slug: true, title: true },
+          orderBy: { date: "desc" },
+        }),
+        prisma.article.findFirst({
+          where: {
+            ...baseWhere,
+            date: { gt: article.date },
+          },
+          select: { slug: true, title: true },
+          orderBy: { date: "asc" },
+        }),
+      ]);
+
+      return NextResponse.json({
+        ...article,
+        related: relatedArticles,
+        navigation: { prev: prevArticle, next: nextArticle },
+      });
     }
 
     return NextResponse.json(article);

@@ -20,6 +20,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
     const { searchParams } = new URL(request.url);
     const admin = searchParams.get("admin") === "true";
+    const includeContext = searchParams.get("context") === "true";
 
     // 取得訪客 token
     const visitorToken = request.cookies.get("visitor_token")?.value;
@@ -71,34 +72,84 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     // 根據 visibility 檢查存取權限
+    let hasAccess = false;
     if (photo.visibility === "public") {
-      return NextResponse.json(photo);
+      hasAccess = true;
+    } else if (photo.visibility === "private" && visitorToken) {
+      const accessToken = await prisma.accessToken.findUnique({
+        where: { token: visitorToken },
+        include: {
+          photos: { where: { photoId: photo.id } },
+        },
+      });
+
+      if (
+        accessToken?.isActive &&
+        accessToken.photos.length > 0 &&
+        (!accessToken.expiresAt || accessToken.expiresAt > new Date())
+      ) {
+        hasAccess = true;
+      }
     }
 
-    if (photo.visibility === "private") {
-      // 檢查訪客 token 是否有權限
-      if (visitorToken) {
-        const accessToken = await prisma.accessToken.findUnique({
-          where: { token: visitorToken },
-          include: {
-            photos: { where: { photoId: photo.id } },
-          },
-        });
-
-        if (
-          accessToken?.isActive &&
-          accessToken.photos.length > 0 &&
-          (!accessToken.expiresAt || accessToken.expiresAt > new Date())
-        ) {
-          return NextResponse.json(photo);
-        }
-      }
-
-      // 沒有權限
+    if (!hasAccess) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    // If context is requested, fetch related photos and navigation
+    if (includeContext) {
+      const baseWhere = {
+        status: "published" as const,
+        visibility: "public" as const,
+        OR: [{ publishedAt: null }, { publishedAt: { lte: new Date() } }],
+      };
+
+      // Fetch related photos (same category, exclude current, limit 4)
+      const relatedPhotos = await prisma.photo.findMany({
+        where: {
+          ...baseWhere,
+          category: photo.category,
+          slug: { not: slug },
+        },
+        select: {
+          slug: true,
+          src: true,
+          title: true,
+          location: true,
+          category: true,
+        },
+        orderBy: { date: "desc" },
+        take: 4,
+      });
+
+      // Fetch prev/next photos for navigation (by date order)
+      const [prevPhoto, nextPhoto] = await Promise.all([
+        prisma.photo.findFirst({
+          where: {
+            ...baseWhere,
+            date: { lt: photo.date },
+          },
+          select: { slug: true, title: true },
+          orderBy: { date: "desc" },
+        }),
+        prisma.photo.findFirst({
+          where: {
+            ...baseWhere,
+            date: { gt: photo.date },
+          },
+          select: { slug: true, title: true },
+          orderBy: { date: "asc" },
+        }),
+      ]);
+
+      return NextResponse.json({
+        ...photo,
+        related: relatedPhotos,
+        navigation: { prev: prevPhoto, next: nextPhoto },
+      });
+    }
+
+    return NextResponse.json(photo);
   } catch (error) {
     console.error("Get photo error:", error);
     return NextResponse.json(

@@ -21,6 +21,19 @@ interface LinkedPhoto {
   location: string;
 }
 
+interface RelatedArticle {
+  slug: string;
+  title: string;
+  cover: string;
+  category: string;
+  readTime: number;
+}
+
+interface NavigationArticle {
+  slug: string;
+  title: string;
+}
+
 interface Article {
   id: number;
   slug: string;
@@ -33,6 +46,11 @@ interface Article {
   date: string;
   tags: ArticleTag[];
   photos: LinkedPhoto[];
+  related?: RelatedArticle[];
+  navigation?: {
+    prev: NavigationArticle | null;
+    next: NavigationArticle | null;
+  };
 }
 
 // Extract headings from content
@@ -52,7 +70,6 @@ function extractHeadings(content: string): { id: string; title: string }[] {
 export default function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string | null>(null);
   const [article, setArticle] = useState<Article | null>(null);
-  const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const articleRef = useRef<HTMLElement>(null);
@@ -66,7 +83,8 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
 
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/articles/${slug}`);
+        // Fetch article with context (related + navigation) in one request
+        const res = await fetch(`/api/articles/${slug}?context=true`);
         if (!res.ok) {
           setArticle(null);
           setIsLoading(false);
@@ -75,17 +93,12 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
         const data = await res.json();
         setArticle(data);
 
-        // Track view
+        // Track view (fire and forget)
         fetch("/api/analytics/track", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ type: "article", slug }),
         }).catch(() => {/* ignore tracking errors */});
-
-        // Fetch all articles for navigation
-        const allRes = await fetch("/api/articles?limit=50");
-        const allData = await allRes.json();
-        setAllArticles(allData.articles || []);
       } catch (error) {
         console.error("Failed to fetch article:", error);
         setArticle(null);
@@ -126,14 +139,11 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
     notFound();
   }
 
-  const currentIndex = allArticles.findIndex((a) => a.slug === article.slug);
-  const prevArticle = currentIndex > 0 ? allArticles[currentIndex - 1] : null;
-  const nextArticle = currentIndex < allArticles.length - 1 ? allArticles[currentIndex + 1] : null;
+  // Get navigation and related from article context
+  const prevArticle = article.navigation?.prev || null;
+  const nextArticle = article.navigation?.next || null;
   const headings = extractHeadings(article.content);
-
-  const relatedArticles = allArticles
-    .filter((a) => a.category === article.category && a.slug !== article.slug)
-    .slice(0, 2);
+  const relatedArticles = article.related || [];
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -155,6 +165,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
           src={article.cover}
           alt={article.title}
           fill
+          sizes="100vw"
           className="object-cover"
           priority
         />
@@ -296,6 +307,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
                       src={photo.src}
                       alt={photo.title}
                       fill
+                      sizes="(max-width: 768px) 50vw, 25vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -326,6 +338,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
                       src={related.cover}
                       alt={related.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
