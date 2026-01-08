@@ -1166,6 +1166,7 @@ export function MediaLibraryContent({
         <MediaUploader
           onClose={() => setShowUploader(false)}
           onComplete={handleUploadComplete}
+          folderId={currentFolderId}
         />
       )}
 
