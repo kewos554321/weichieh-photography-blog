@@ -139,7 +139,7 @@ export function MediaListItem({
 
       {/* Date */}
       <td className="hidden xl:table-cell px-4 py-3 text-sm text-stone-500">
-        {formatDate(media.createdAt)}
+        {formatDate(media.updatedAt)}
       </td>
 
       {/* Actions */}

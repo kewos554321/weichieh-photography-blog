@@ -45,7 +45,7 @@ interface BreadcrumbItem {
 
 type ViewMode = "grid" | "list";
 type GridSize = "small" | "medium" | "large";
-type SortField = "filename" | "size" | "createdAt" | "folder";
+type SortField = "filename" | "size" | "updatedAt" | "folder";
 type SortDirection = "asc" | "desc";
 
 const GRID_CLASSES: Record<GridSize, string> = {
@@ -98,7 +98,7 @@ export function MediaLibraryContent({
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [gridSize, setGridSize] = useState<GridSize>("medium");
   const [compactMode, setCompactMode] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("createdAt");
+  const [sortField, setSortField] = useState<SortField>("updatedAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [showUploader, setShowUploader] = useState(false);
   const [showFolderForm, setShowFolderForm] = useState(false);
@@ -661,8 +661,8 @@ export function MediaLibraryContent({
       case "size":
         comparison = a.size - b.size;
         break;
-      case "createdAt":
-        comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case "updatedAt":
+        comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
         break;
       case "folder":
         const aFolder = a.folder?.name || "";
@@ -1046,11 +1046,11 @@ export function MediaLibraryContent({
                       </th>
                       <th
                         className="hidden xl:table-cell px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700 w-28"
-                        onClick={() => handleSort("createdAt")}
+                        onClick={() => handleSort("updatedAt")}
                       >
                         <div className="flex items-center gap-1">
                           Date
-                          <SortIcon field="createdAt" />
+                          <SortIcon field="updatedAt" />
                         </div>
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider w-32">
