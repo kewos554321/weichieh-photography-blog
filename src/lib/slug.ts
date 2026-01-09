@@ -57,7 +57,7 @@ export async function generateUniquePhotoSlug(
  * Generate a unique slug for Article
  * If slug exists, append -1, -2, etc.
  */
-export async function generateUniqueArticleSlug(
+export async function generateUniquePostSlug(
   title: string,
   excludeSlug?: string
 ): Promise<string> {
@@ -65,14 +65,14 @@ export async function generateUniqueArticleSlug(
 
   if (!baseSlug) {
     // If title only has Chinese chars, use timestamp
-    return `article-${Date.now()}`;
+    return `post-${Date.now()}`;
   }
 
   let slug = baseSlug;
   let counter = 1;
 
   while (true) {
-    const existing = await prisma.article.findUnique({
+    const existing = await prisma.post.findUnique({
       where: { slug },
       select: { slug: true },
     });

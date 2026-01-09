@@ -5,17 +5,17 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     // Get total counts
-    const [totalPhotos, totalArticles, publishedPhotos, publishedArticles] = await Promise.all([
+    const [totalPhotos, totalPosts, publishedPhotos, publishedPosts] = await Promise.all([
       prisma.photo.count(),
-      prisma.article.count(),
+      prisma.post.count(),
       prisma.photo.count({ where: { status: "published" } }),
-      prisma.article.count({ where: { status: "published" } }),
+      prisma.post.count({ where: { status: "published" } }),
     ]);
 
     // Get total views
-    const [photoViews, articleViews] = await Promise.all([
+    const [photoViews, postViews] = await Promise.all([
       prisma.photo.aggregate({ _sum: { viewCount: true } }),
-      prisma.article.aggregate({ _sum: { viewCount: true } }),
+      prisma.post.aggregate({ _sum: { viewCount: true } }),
     ]);
 
     // Get top photos by views
@@ -34,7 +34,7 @@ export async function GET() {
     });
 
     // Get top articles by views
-    const topArticles = await prisma.article.findMany({
+    const topPosts = await prisma.post.findMany({
       where: { status: "published" },
       orderBy: { viewCount: "desc" },
       take: 10,
@@ -57,7 +57,7 @@ export async function GET() {
     });
 
     // Get category breakdown for articles
-    const articleCategoryStats = await prisma.article.groupBy({
+    const postCategoryStats = await prisma.post.groupBy({
       by: ["category"],
       where: { status: "published" },
       _count: { id: true },
@@ -68,14 +68,14 @@ export async function GET() {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const [recentPhotos, recentArticles] = await Promise.all([
+    const [recentPhotos, recentPosts] = await Promise.all([
       prisma.photo.count({
         where: {
           status: "published",
           publishedAt: { gte: thirtyDaysAgo },
         },
       }),
-      prisma.article.count({
+      prisma.post.count({
         where: {
           status: "published",
           publishedAt: { gte: thirtyDaysAgo },
@@ -84,33 +84,33 @@ export async function GET() {
     ]);
 
     // Get draft counts
-    const [draftPhotos, draftArticles] = await Promise.all([
+    const [draftPhotos, draftPosts] = await Promise.all([
       prisma.photo.count({ where: { status: "draft" } }),
-      prisma.article.count({ where: { status: "draft" } }),
+      prisma.post.count({ where: { status: "draft" } }),
     ]);
 
     return NextResponse.json({
       overview: {
         totalPhotos,
-        totalArticles,
+        totalPosts,
         publishedPhotos,
-        publishedArticles,
+        publishedPosts,
         draftPhotos,
-        draftArticles,
-        totalViews: (photoViews._sum.viewCount || 0) + (articleViews._sum.viewCount || 0),
+        draftPosts,
+        totalViews: (photoViews._sum.viewCount || 0) + (postViews._sum.viewCount || 0),
         photoViews: photoViews._sum.viewCount || 0,
-        articleViews: articleViews._sum.viewCount || 0,
+        postViews: postViews._sum.viewCount || 0,
         recentPhotos,
-        recentArticles,
+        recentPosts,
       },
       topPhotos,
-      topArticles,
+      topPosts,
       photoCategoryStats: photoCategoryStats.map((s) => ({
         category: s.category,
         count: s._count.id,
         views: s._sum.viewCount || 0,
       })),
-      articleCategoryStats: articleCategoryStats.map((s) => ({
+      postCategoryStats: postCategoryStats.map((s) => ({
         category: s.category,
         count: s._count.id,
         views: s._sum.viewCount || 0,

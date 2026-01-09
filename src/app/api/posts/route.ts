@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAndPublish } from "@/lib/publish";
 
-// GET /api/articles - 取得文章列表
+// GET /api/posts - 取得文章列表
 export async function GET(request: NextRequest) {
   try {
     // 自動發布到期的排程內容（每 60 秒最多檢查一次）
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     const [articles, total] = await Promise.all([
-      prisma.article.findMany({
+      prisma.post.findMany({
         where,
         orderBy: { date: "desc" },
         take: limit,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           tags: true,
         },
       }),
-      prisma.article.count({ where }),
+      prisma.post.count({ where }),
     ]);
 
     return NextResponse.json({ articles, total });
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/articles - 新增文章
+// POST /api/posts - 新增文章
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 檢查 slug 是否已存在
-    const existing = await prisma.article.findUnique({ where: { slug } });
+    const existing = await prisma.post.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json(
         { error: "Slug already exists" },
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     // 計算閱讀時間 (假設每分鐘 300 字)
     const readTime = Math.ceil(content.length / 300);
 
-    const article = await prisma.article.create({
+    const article = await prisma.post.create({
       data: {
         slug,
         title,

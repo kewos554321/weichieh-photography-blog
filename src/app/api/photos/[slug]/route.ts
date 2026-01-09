@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       where: { slug },
       include: {
         tags: true,
-        article: {
+        post: {
           select: {
             id: true,
             slug: true,
@@ -208,15 +208,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             set: body.tagIds.map((id: number) => ({ id })),
           },
         }),
-        ...(body.articleId !== undefined && {
-          articleId: body.articleId,
+        ...(body.postId !== undefined && {
+          postId: body.postId,
         }),
         // 隱私控制欄位（簡化版）
         ...(body.visibility !== undefined && { visibility: body.visibility }),
       },
       include: {
         tags: true,
-        article: {
+        post: {
           select: {
             id: true,
             slug: true,

@@ -8,7 +8,7 @@ vi.mock("@/lib/prisma", () => ({
 import {
   generateSlugFromTitle,
   generateUniquePhotoSlug,
-  generateUniqueArticleSlug,
+  generateUniquePostSlug,
   generateUniqueAlbumSlug,
 } from "@/lib/slug";
 
@@ -114,40 +114,40 @@ describe("slug utilities", () => {
     });
   });
 
-  describe("generateUniqueArticleSlug", () => {
+  describe("generateUniquePostSlug", () => {
     it("should generate slug from title", async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockPrisma.post.findUnique.mockResolvedValue(null);
 
-      const slug = await generateUniqueArticleSlug("Test Article");
+      const slug = await generateUniquePostSlug("Test Post");
 
-      expect(slug).toBe("test-article");
+      expect(slug).toBe("test-post");
     });
 
     it("should append counter if slug exists", async () => {
-      mockPrisma.article.findUnique
-        .mockResolvedValueOnce({ slug: "test-article" })
+      mockPrisma.post.findUnique
+        .mockResolvedValueOnce({ slug: "test-post" })
         .mockResolvedValueOnce(null);
 
-      const slug = await generateUniqueArticleSlug("Test Article");
+      const slug = await generateUniquePostSlug("Test Post");
 
-      expect(slug).toBe("test-article-1");
+      expect(slug).toBe("test-post-1");
     });
 
     it("should exclude current slug when updating", async () => {
-      mockPrisma.article.findUnique.mockResolvedValue({ slug: "test-article" });
+      mockPrisma.post.findUnique.mockResolvedValue({ slug: "test-post" });
 
-      const slug = await generateUniqueArticleSlug("Test Article", "test-article");
+      const slug = await generateUniquePostSlug("Test Post", "test-post");
 
-      expect(slug).toBe("test-article");
+      expect(slug).toBe("test-post");
     });
 
     it("should use timestamp for Chinese-only titles", async () => {
       const before = Date.now();
-      const slug = await generateUniqueArticleSlug("攝影技巧");
+      const slug = await generateUniquePostSlug("攝影技巧");
       const after = Date.now();
 
-      expect(slug).toMatch(/^article-\d+$/);
-      const timestamp = parseInt(slug.replace("article-", ""));
+      expect(slug).toMatch(/^post-\d+$/);
+      const timestamp = parseInt(slug.replace("post-", ""));
       expect(timestamp).toBeGreaterThanOrEqual(before);
       expect(timestamp).toBeLessThanOrEqual(after);
     });

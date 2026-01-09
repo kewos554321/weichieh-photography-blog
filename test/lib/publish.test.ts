@@ -9,11 +9,11 @@ vi.mock("@/lib/prisma", () => ({
 let publishScheduledContent: typeof import("@/lib/publish").publishScheduledContent;
 let checkAndPublish: typeof import("@/lib/publish").checkAndPublish;
 let publishSinglePhoto: typeof import("@/lib/publish").publishSinglePhoto;
-let publishSingleArticle: typeof import("@/lib/publish").publishSingleArticle;
+let publishSinglePost: typeof import("@/lib/publish").publishSinglePost;
 let schedulePhoto: typeof import("@/lib/publish").schedulePhoto;
-let scheduleArticle: typeof import("@/lib/publish").scheduleArticle;
+let schedulePost: typeof import("@/lib/publish").schedulePost;
 let unschedulePhoto: typeof import("@/lib/publish").unschedulePhoto;
-let unscheduleArticle: typeof import("@/lib/publish").unscheduleArticle;
+let unschedulePost: typeof import("@/lib/publish").unschedulePost;
 
 describe("Publish Library", () => {
   beforeEach(async () => {
@@ -26,11 +26,11 @@ describe("Publish Library", () => {
     publishScheduledContent = publishModule.publishScheduledContent;
     checkAndPublish = publishModule.checkAndPublish;
     publishSinglePhoto = publishModule.publishSinglePhoto;
-    publishSingleArticle = publishModule.publishSingleArticle;
+    publishSinglePost = publishModule.publishSinglePost;
     schedulePhoto = publishModule.schedulePhoto;
-    scheduleArticle = publishModule.scheduleArticle;
+    schedulePost = publishModule.schedulePost;
     unschedulePhoto = publishModule.unschedulePhoto;
-    unscheduleArticle = publishModule.unscheduleArticle;
+    unschedulePost = publishModule.unschedulePost;
   });
 
   afterEach(() => {
@@ -38,24 +38,24 @@ describe("Publish Library", () => {
   });
 
   describe("publishScheduledContent", () => {
-    it("should update scheduled articles and photos to published", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 2 });
+    it("should update scheduled posts and photos to published", async () => {
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 2 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 3 });
 
       const result = await publishScheduledContent();
 
-      expect(result.publishedArticles).toBe(2);
+      expect(result.publishedPosts).toBe(2);
       expect(result.publishedPhotos).toBe(3);
       expect(result.timestamp).toBeInstanceOf(Date);
     });
 
     it("should update with correct where clause", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
 
       await publishScheduledContent();
 
-      expect(mockPrisma.article.updateMany).toHaveBeenCalledWith({
+      expect(mockPrisma.post.updateMany).toHaveBeenCalledWith({
         where: {
           status: "scheduled",
           publishedAt: { lte: expect.any(Date) },
@@ -73,30 +73,30 @@ describe("Publish Library", () => {
     });
 
     it("should return zero counts when nothing to publish", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
 
       const result = await publishScheduledContent();
 
-      expect(result.publishedArticles).toBe(0);
+      expect(result.publishedPosts).toBe(0);
       expect(result.publishedPhotos).toBe(0);
     });
   });
 
   describe("checkAndPublish", () => {
     it("should publish content on first call", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 1 });
 
       const result = await checkAndPublish();
 
       expect(result).not.toBeNull();
-      expect(result?.publishedArticles).toBe(1);
+      expect(result?.publishedPosts).toBe(1);
       expect(result?.publishedPhotos).toBe(1);
     });
 
     it("should skip publish if called within 60 seconds", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 1 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 1 });
 
       // First call
@@ -107,11 +107,11 @@ describe("Publish Library", () => {
       const result = await checkAndPublish();
 
       expect(result).toBeNull();
-      expect(mockPrisma.article.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.post.updateMany).toHaveBeenCalledTimes(1);
     });
 
     it("should publish again after 60 seconds", async () => {
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
 
       // First call
@@ -124,12 +124,12 @@ describe("Publish Library", () => {
       const result = await checkAndPublish();
 
       expect(result).not.toBeNull();
-      expect(mockPrisma.article.updateMany).toHaveBeenCalledTimes(2);
+      expect(mockPrisma.post.updateMany).toHaveBeenCalledTimes(2);
     });
 
     it("should return null and log error on failure", async () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      mockPrisma.article.updateMany.mockRejectedValue(new Error("DB error"));
+      mockPrisma.post.updateMany.mockRejectedValue(new Error("DB error"));
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
 
       const result = await checkAndPublish();
@@ -141,20 +141,20 @@ describe("Publish Library", () => {
 
     it("should log when content is published", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 2 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 2 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 3 });
 
       await checkAndPublish();
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[Auto-publish] Published 2 articles, 3 photos")
+        expect.stringContaining("[Auto-publish] Published 2 posts, 3 photos")
       );
       consoleSpy.mockRestore();
     });
 
     it("should not log when nothing is published", async () => {
       const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      mockPrisma.article.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.post.updateMany.mockResolvedValue({ count: 0 });
       mockPrisma.photo.updateMany.mockResolvedValue({ count: 0 });
 
       await checkAndPublish();
@@ -182,15 +182,15 @@ describe("Publish Library", () => {
     });
   });
 
-  describe("publishSingleArticle", () => {
-    it("should publish a single article", async () => {
-      const mockArticle = { id: 1, status: "published", publishedAt: new Date() };
-      mockPrisma.article.update.mockResolvedValue(mockArticle);
+  describe("publishSinglePost", () => {
+    it("should publish a single post", async () => {
+      const mockPost = { id: 1, status: "published", publishedAt: new Date() };
+      mockPrisma.post.update.mockResolvedValue(mockPost);
 
-      const result = await publishSingleArticle(1);
+      const result = await publishSinglePost(1);
 
-      expect(result).toEqual(mockArticle);
-      expect(mockPrisma.article.update).toHaveBeenCalledWith({
+      expect(result).toEqual(mockPost);
+      expect(mockPrisma.post.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           status: "published",
@@ -219,16 +219,16 @@ describe("Publish Library", () => {
     });
   });
 
-  describe("scheduleArticle", () => {
-    it("should schedule an article for future publication", async () => {
+  describe("schedulePost", () => {
+    it("should schedule an post for future publication", async () => {
       const futureDate = new Date("2025-12-31T00:00:00Z");
-      const mockArticle = { id: 1, status: "scheduled", publishedAt: futureDate };
-      mockPrisma.article.update.mockResolvedValue(mockArticle);
+      const mockPost = { id: 1, status: "scheduled", publishedAt: futureDate };
+      mockPrisma.post.update.mockResolvedValue(mockPost);
 
-      const result = await scheduleArticle(1, futureDate);
+      const result = await schedulePost(1, futureDate);
 
-      expect(result).toEqual(mockArticle);
-      expect(mockPrisma.article.update).toHaveBeenCalledWith({
+      expect(result).toEqual(mockPost);
+      expect(mockPrisma.post.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           status: "scheduled",
@@ -256,15 +256,15 @@ describe("Publish Library", () => {
     });
   });
 
-  describe("unscheduleArticle", () => {
-    it("should unschedule an article and set to draft", async () => {
-      const mockArticle = { id: 1, status: "draft", publishedAt: null };
-      mockPrisma.article.update.mockResolvedValue(mockArticle);
+  describe("unschedulePost", () => {
+    it("should unschedule an post and set to draft", async () => {
+      const mockPost = { id: 1, status: "draft", publishedAt: null };
+      mockPrisma.post.update.mockResolvedValue(mockPost);
 
-      const result = await unscheduleArticle(1);
+      const result = await unschedulePost(1);
 
-      expect(result).toEqual(mockArticle);
-      expect(mockPrisma.article.update).toHaveBeenCalledWith({
+      expect(result).toEqual(mockPost);
+      expect(mockPrisma.post.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: {
           status: "draft",

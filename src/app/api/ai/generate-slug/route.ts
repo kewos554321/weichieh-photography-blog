@@ -6,14 +6,14 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 interface GenerateSlugRequest {
   title: string;
-  type: "photo" | "article" | "album";
+  type: "photo" | "post" | "album";
   excludeSlug?: string; // 編輯時排除自己
 }
 
 // 確保 slug 唯一
 async function ensureUniqueSlug(
   baseSlug: string,
-  type: "photo" | "article" | "album",
+  type: "photo" | "post" | "album",
   excludeSlug?: string
 ): Promise<string> {
   let slug = baseSlug;
@@ -24,8 +24,8 @@ async function ensureUniqueSlug(
 
     if (type === "photo") {
       existing = await prisma.photo.findUnique({ where: { slug }, select: { slug: true } });
-    } else if (type === "article") {
-      existing = await prisma.article.findUnique({ where: { slug }, select: { slug: true } });
+    } else if (type === "post") {
+      existing = await prisma.post.findUnique({ where: { slug }, select: { slug: true } });
     } else if (type === "album") {
       existing = await prisma.album.findUnique({ where: { slug }, select: { slug: true } });
     }
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!type || !["photo", "article", "album"].includes(type)) {
+    if (!type || !["photo", "post", "album"].includes(type)) {
       return NextResponse.json(
         { error: "Missing or invalid type (must be 'photo', 'article', or 'album')" },
         { status: 400 }

@@ -103,7 +103,7 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
 
   // 載入可選的文章列表
   useEffect(() => {
-    fetch("/api/articles?admin=true&limit=100")
+    fetch("/api/posts?admin=true&limit=100")
       .then((res) => res.json())
       .then((data) => setArticles(data.articles || []))
       .catch(() => setArticles([]));

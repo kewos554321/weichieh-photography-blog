@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
         data: { viewCount: { increment: 1 } },
       });
     } else if (type === "article") {
-      await prisma.article.update({
+      await prisma.post.update({
         where: { slug },
         data: { viewCount: { increment: 1 } },
       });

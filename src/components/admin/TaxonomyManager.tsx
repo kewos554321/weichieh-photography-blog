@@ -22,8 +22,8 @@ export function TaxonomyManager({ type }: TaxonomyManagerProps) {
       tagCountField: "photos",
     },
     articles: {
-      categoryApiPath: "/api/articles/categories",
-      tagApiPath: "/api/articles/tags",
+      categoryApiPath: "/api/posts/categories",
+      tagApiPath: "/api/posts/tags",
       categoryLabel: "分類",
       tagCountField: "articles",
     },

@@ -25,8 +25,8 @@ const config = {
     tagCountField: "albums",
   },
   articles: {
-    categoryApiPath: "/api/articles/categories",
-    tagApiPath: "/api/articles/tags",
+    categoryApiPath: "/api/posts/categories",
+    tagApiPath: "/api/posts/tags",
     categoryLabel: "分類",
     categoryTitle: "Post Categories",
     tagTitle: "Post Tags",

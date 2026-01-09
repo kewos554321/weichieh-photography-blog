@@ -9,7 +9,7 @@ interface GenerateArticleRequest {
   language?: "zh" | "en";
 }
 
-// POST /api/ai/generate-article - 根據封面圖片生成文章內容
+// POST /api/ai/generate-post - 根據封面圖片生成文章內容
 export async function POST(request: NextRequest) {
   try {
     const { imageUrl, prompt, language = "zh" } = (await request.json()) as GenerateArticleRequest;

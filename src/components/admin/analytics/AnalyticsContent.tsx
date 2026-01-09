@@ -80,7 +80,7 @@ export function AnalyticsContent() {
               <FileText className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-stone-900">{data.overview.publishedArticles}</p>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.publishedPosts}</p>
               <p className="text-sm text-stone-500">Published Articles</p>
             </div>
           </div>
@@ -91,7 +91,7 @@ export function AnalyticsContent() {
               <Clock className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-semibold text-stone-900">{data.overview.draftPhotos + data.overview.draftArticles}</p>
+              <p className="text-2xl font-semibold text-stone-900">{data.overview.draftPhotos + data.overview.draftPosts}</p>
               <p className="text-sm text-stone-500">Drafts</p>
             </div>
           </div>
@@ -116,13 +116,13 @@ export function AnalyticsContent() {
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <h2 className="text-lg font-medium text-stone-900 mb-4">Article Views</h2>
           <div className="flex items-end gap-4">
-            <span className="text-4xl font-semibold text-stone-900">{data.overview.articleViews.toLocaleString()}</span>
+            <span className="text-4xl font-semibold text-stone-900">{data.overview.postViews.toLocaleString()}</span>
             <span className="text-sm text-stone-500 mb-1">total views</span>
           </div>
           <div className="mt-4 h-2 bg-stone-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-purple-500 rounded-full"
-              style={{ width: `${data.overview.totalViews > 0 ? (data.overview.articleViews / data.overview.totalViews) * 100 : 0}%` }}
+              style={{ width: `${data.overview.totalViews > 0 ? (data.overview.postViews / data.overview.totalViews) * 100 : 0}%` }}
             />
           </div>
         </div>
@@ -164,11 +164,11 @@ export function AnalyticsContent() {
           <div className="p-4 border-b border-stone-200">
             <h2 className="text-lg font-medium text-stone-900">Top Articles</h2>
           </div>
-          {data.topArticles.length === 0 ? (
+          {data.topPosts.length === 0 ? (
             <div className="p-8 text-center text-stone-500">No data yet</div>
           ) : (
             <div className="divide-y divide-stone-100">
-              {data.topArticles.map((article, index) => (
+              {data.topPosts.map((article, index) => (
                 <div key={article.id} className="flex items-center gap-4 p-4 hover:bg-stone-50">
                   <span className="text-lg font-medium text-stone-400 w-6">{index + 1}</span>
                   <div className="relative w-12 h-12 rounded overflow-hidden flex-shrink-0">
@@ -218,11 +218,11 @@ export function AnalyticsContent() {
           <div className="p-4 border-b border-stone-200">
             <h2 className="text-lg font-medium text-stone-900">Article Categories</h2>
           </div>
-          {data.articleCategoryStats.length === 0 ? (
+          {data.postCategoryStats.length === 0 ? (
             <div className="p-8 text-center text-stone-500">No data yet</div>
           ) : (
             <div className="p-4 space-y-3">
-              {data.articleCategoryStats.map((stat) => (
+              {data.postCategoryStats.map((stat) => (
                 <div key={stat.category} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">{stat.category}</span>
@@ -245,7 +245,7 @@ export function AnalyticsContent() {
             <p className="text-sm text-stone-500 mt-1">New Photos Published</p>
           </div>
           <div className="text-center p-4 bg-stone-50 rounded-lg">
-            <p className="text-3xl font-semibold text-purple-600">{data.overview.recentArticles}</p>
+            <p className="text-3xl font-semibold text-purple-600">{data.overview.recentPosts}</p>
             <p className="text-sm text-stone-500 mt-1">New Articles Published</p>
           </div>
         </div>

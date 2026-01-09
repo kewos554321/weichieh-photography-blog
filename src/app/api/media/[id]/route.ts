@@ -39,7 +39,7 @@ export async function GET(
         where: { src: { contains: media.url } },
         select: { id: true, slug: true, title: true },
       }),
-      prisma.article.findMany({
+      prisma.post.findMany({
         where: {
           OR: [
             { cover: { contains: media.url } },
@@ -140,7 +140,7 @@ export async function DELETE(
         where: { src: { contains: media.url } },
         select: { id: true, slug: true, title: true },
       }),
-      prisma.article.findMany({
+      prisma.post.findMany({
         where: {
           OR: [
             { cover: { contains: media.url } },

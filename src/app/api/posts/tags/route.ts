@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/articles/tags - 取得所有 Article Tags
+// GET /api/posts/tags - 取得所有 Post Tags
 export async function GET() {
   try {
-    const tags = await prisma.articleTag.findMany({
+    const tags = await prisma.postTag.findMany({
       orderBy: { name: "asc" },
       include: {
         _count: {
@@ -23,7 +23,7 @@ export async function GET() {
   }
 }
 
-// POST /api/articles/tags - 新增 Article Tag
+// POST /api/posts/tags - 新增 Post Tag
 export async function POST(request: NextRequest) {
   try {
     const { name } = await request.json();
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tag = await prisma.articleTag.create({
+    const tag = await prisma.postTag.create({
       data: { name: name.trim() },
     });
 

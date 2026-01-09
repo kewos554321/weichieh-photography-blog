@@ -70,9 +70,9 @@ export async function GET(request: NextRequest) {
     // Get usage counts for each media item
     const mediaWithUsage = await Promise.all(
       mediaList.map(async (m) => {
-        const [photoCount, articleCount] = await Promise.all([
+        const [photoCount, postCount] = await Promise.all([
           prisma.photo.count({ where: { src: { contains: m.url } } }),
-          prisma.article.count({
+          prisma.post.count({
             where: {
               OR: [
                 { cover: { contains: m.url } },
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         ]);
         return {
           ...m,
-          _usage: { photoCount, articleCount },
+          _usage: { photoCount, postCount },
         };
       })
     );

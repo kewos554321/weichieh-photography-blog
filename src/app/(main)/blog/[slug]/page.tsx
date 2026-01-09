@@ -8,7 +8,7 @@ import MarkdownContent from "@/components/MarkdownContent";
 import { ReadingProgressBar } from "@/components/ReadingProgressBar";
 import { ShareButtons } from "@/components/ShareButtons";
 
-interface ArticleTag {
+interface PostTag {
   id: number;
   name: string;
 }
@@ -21,7 +21,7 @@ interface LinkedPhoto {
   location: string;
 }
 
-interface RelatedArticle {
+interface RelatedPost {
   slug: string;
   title: string;
   cover: string;
@@ -29,12 +29,12 @@ interface RelatedArticle {
   readTime: number;
 }
 
-interface NavigationArticle {
+interface NavigationPost {
   slug: string;
   title: string;
 }
 
-interface Article {
+interface Post {
   id: number;
   slug: string;
   title: string;
@@ -44,12 +44,12 @@ interface Article {
   category: string;
   readTime: number;
   date: string;
-  tags: ArticleTag[];
+  tags: PostTag[];
   photos: LinkedPhoto[];
-  related?: RelatedArticle[];
+  related?: RelatedPost[];
   navigation?: {
-    prev: NavigationArticle | null;
-    next: NavigationArticle | null;
+    prev: NavigationPost | null;
+    next: NavigationPost | null;
   };
 }
 
@@ -67,9 +67,9 @@ function extractHeadings(content: string): { id: string; title: string }[] {
   return headings;
 }
 
-export default function BlogArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+export default function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState<string | null>(null);
-  const [article, setArticle] = useState<Article | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const articleRef = useRef<HTMLElement>(null);
@@ -81,17 +81,17 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
   useEffect(() => {
     if (!slug) return;
 
-    const fetchArticle = async () => {
+    const fetchPost = async () => {
       try {
         // Fetch article with context (related + navigation) in one request
-        const res = await fetch(`/api/articles/${slug}?context=true`);
+        const res = await fetch(`/api/posts/${slug}?context=true`);
         if (!res.ok) {
-          setArticle(null);
+          setPost(null);
           setIsLoading(false);
           return;
         }
         const data = await res.json();
-        setArticle(data);
+        setPost(data);
 
         // Track view (fire and forget)
         fetch("/api/analytics/track", {
@@ -101,13 +101,13 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
         }).catch(() => {/* ignore tracking errors */});
       } catch (error) {
         console.error("Failed to fetch article:", error);
-        setArticle(null);
+        setPost(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchArticle();
+    fetchPost();
   }, [slug]);
 
   useEffect(() => {
@@ -135,15 +135,15 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
     );
   }
 
-  if (!article) {
+  if (!post) {
     notFound();
   }
 
   // Get navigation and related from article context
-  const prevArticle = article.navigation?.prev || null;
-  const nextArticle = article.navigation?.next || null;
-  const headings = extractHeadings(article.content);
-  const relatedArticles = article.related || [];
+  const prevPost = post.navigation?.prev || null;
+  const nextPost = post.navigation?.next || null;
+  const headings = extractHeadings(post.content);
+  const relatedPosts = post.related || [];
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -162,8 +162,8 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
       {/* Cover */}
       <div className="relative h-[40vh] md:h-[50vh]">
         <Image
-          src={article.cover}
-          alt={article.title}
+          src={post.cover}
+          alt={post.title}
           fill
           sizes="100vw"
           className="object-cover"
@@ -183,7 +183,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
             Blog
           </Link>
           <span>/</span>
-          <span className="text-[var(--text-secondary)] truncate max-w-[200px]">{article.title}</span>
+          <span className="text-[var(--text-secondary)] truncate max-w-[200px]">{post.title}</span>
         </nav>
       </div>
 
@@ -195,16 +195,16 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
             {/* Meta */}
             <div className="flex flex-wrap items-center gap-3 text-xs tracking-widest uppercase text-[var(--text-muted)] mb-4">
               <span className="px-3 py-1 bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] rounded-full">
-                {article.category}
+                {post.category}
               </span>
-              <span>{new Date(article.date).toLocaleDateString()}</span>
+              <span>{new Date(post.date).toLocaleDateString()}</span>
               <span>·</span>
-              <span>{article.readTime} min read</span>
+              <span>{post.readTime} min read</span>
             </div>
 
             {/* Title */}
             <h1 className="font-serif text-3xl md:text-4xl lg:text-5xl mb-8 text-[var(--foreground)] leading-tight">
-              {article.title}
+              {post.title}
             </h1>
 
             {/* Author Info */}
@@ -226,15 +226,15 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
 
             {/* Article Body */}
             <div className="prose prose-stone prose-lg max-w-none">
-              <MarkdownContent content={article.content} />
+              <MarkdownContent content={post.content} />
             </div>
 
             {/* Tags */}
-            {article.tags && article.tags.length > 0 && (
+            {post.tags && post.tags.length > 0 && (
               <div className="mt-12 pt-8 border-t border-[var(--card-border)]">
                 <p className="text-xs tracking-widest uppercase text-[var(--text-muted)] mb-4">Tags</p>
                 <div className="flex flex-wrap gap-2">
-                  {article.tags.map((tag) => (
+                  {post.tags.map((tag) => (
                     <span
                       key={tag.id}
                       className="px-3 py-1 text-sm bg-[var(--card-bg)] border border-[var(--card-border)] text-[var(--text-secondary)] rounded-full"
@@ -249,7 +249,7 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
             {/* Share Section */}
             <div className="mt-8 pt-8 border-t border-[var(--card-border)]">
               <p className="text-xs tracking-widest uppercase text-[var(--text-muted)] mb-4">Share this article</p>
-              <ShareButtons title={article.title} />
+              <ShareButtons title={post.title} />
             </div>
 
           </article>
@@ -293,14 +293,14 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
       </div>
 
       {/* Related Photos from this Article */}
-      {article.photos && article.photos.length > 0 && (
+      {post.photos && post.photos.length > 0 && (
         <section className="border-t border-[var(--card-border)] py-16 md:py-20 bg-[var(--card-bg)]/50">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
             <p className="text-xs tracking-widest uppercase text-[var(--accent-teal)] mb-2">Photos</p>
             <h2 className="font-serif text-2xl md:text-3xl text-[var(--text-primary)] mb-10">本文相關照片</h2>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {article.photos.map((photo) => (
+              {post.photos.map((photo) => (
                 <Link key={photo.slug} href={`/photo/${photo.slug}`} className="group block">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-lg mb-3">
                     <Image
@@ -324,14 +324,14 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
       )}
 
       {/* Related Articles */}
-      {relatedArticles.length > 0 && (
+      {relatedPosts.length > 0 && (
         <section className="border-t border-[var(--card-border)] py-16 md:py-20">
           <div className="max-w-7xl mx-auto px-4 md:px-6">
-            <p className="text-xs tracking-widest uppercase text-[var(--text-muted)] mb-2">More from {article.category}</p>
+            <p className="text-xs tracking-widest uppercase text-[var(--text-muted)] mb-2">More from {post.category}</p>
             <h2 className="font-serif text-2xl md:text-3xl text-[var(--text-primary)] mb-10">Related Articles</h2>
 
             <div className="grid md:grid-cols-2 gap-8">
-              {relatedArticles.map((related) => (
+              {relatedPosts.map((related) => (
                 <Link key={related.slug} href={`/blog/${related.slug}`} className="group">
                   <div className="relative aspect-[16/10] overflow-hidden rounded-lg mb-4">
                     <Image
@@ -362,15 +362,15 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-3">
             {/* Previous */}
-            {prevArticle ? (
+            {prevPost ? (
               <Link
-                href={`/blog/${prevArticle.slug}`}
+                href={`/blog/${prevPost.slug}`}
                 className="group flex items-center gap-4 p-6 md:p-10 hover:bg-[var(--card-bg)] transition-colors duration-300"
               >
                 <span className="text-2xl text-[var(--text-muted)] group-hover:text-[var(--accent-teal)] transition-colors">←</span>
                 <div className="hidden md:block">
                   <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] mb-1">Previous</p>
-                  <p className="font-serif text-[var(--text-primary)] group-hover:text-[var(--accent-teal)] transition-colors line-clamp-1">{prevArticle.title}</p>
+                  <p className="font-serif text-[var(--text-primary)] group-hover:text-[var(--accent-teal)] transition-colors line-clamp-1">{prevPost.title}</p>
                 </div>
               </Link>
             ) : (
@@ -388,14 +388,14 @@ export default function BlogArticlePage({ params }: { params: Promise<{ slug: st
             </Link>
 
             {/* Next */}
-            {nextArticle ? (
+            {nextPost ? (
               <Link
-                href={`/blog/${nextArticle.slug}`}
+                href={`/blog/${nextPost.slug}`}
                 className="group flex items-center justify-end gap-4 p-6 md:p-10 hover:bg-[var(--card-bg)] transition-colors duration-300"
               >
                 <div className="hidden md:block text-right">
                   <p className="text-[10px] tracking-[0.2em] uppercase text-[var(--text-muted)] mb-1">Next</p>
-                  <p className="font-serif text-[var(--text-primary)] group-hover:text-[var(--accent-teal)] transition-colors line-clamp-1">{nextArticle.title}</p>
+                  <p className="font-serif text-[var(--text-primary)] group-hover:text-[var(--accent-teal)] transition-colors line-clamp-1">{nextPost.title}</p>
                 </div>
                 <span className="text-2xl text-[var(--text-muted)] group-hover:text-[var(--accent-teal)] transition-colors">→</span>
               </Link>

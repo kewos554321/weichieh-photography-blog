@@ -35,14 +35,14 @@ export interface Media {
   updatedAt: string;
   _usage?: {
     photoCount: number;
-    articleCount: number;
+    postCount: number;
   };
 }
 
 export interface MediaWithUsage extends Media {
   usage: {
     photos: Array<{ id: number; slug: string; title: string }>;
-    articles: Array<{ id: number; slug: string; title: string }>;
+    posts: Array<{ id: number; slug: string; title: string }>;
   };
 }
 
@@ -65,10 +65,10 @@ export interface ImageEdits {
   filter?: FilterType;
 }
 
-export interface ArticleTag {
+export interface PostTag {
   id: number;
   name: string;
-  _count?: { articles: number };
+  _count?: { posts: number };
 }
 
 export interface Category {
@@ -98,7 +98,7 @@ export interface Photo {
   tags: PhotoTag[];
 }
 
-export interface Article {
+export interface Post {
   id: number;
   slug: string;
   title: string;
@@ -110,7 +110,7 @@ export interface Article {
   status: "draft" | "scheduled" | "published";
   publishedAt?: string;
   readTime: number;
-  tags: ArticleTag[];
+  tags: PostTag[];
 }
 
 export interface ProfileData {
@@ -149,16 +149,16 @@ export interface SEOData {
 export interface AnalyticsData {
   overview: {
     totalPhotos: number;
-    totalArticles: number;
+    totalPosts: number;
     publishedPhotos: number;
-    publishedArticles: number;
+    publishedPosts: number;
     draftPhotos: number;
-    draftArticles: number;
+    draftPosts: number;
     totalViews: number;
     photoViews: number;
-    articleViews: number;
+    postViews: number;
     recentPhotos: number;
-    recentArticles: number;
+    recentPosts: number;
   };
   topPhotos: Array<{
     id: number;
@@ -168,7 +168,7 @@ export interface AnalyticsData {
     viewCount: number;
     category: string;
   }>;
-  topArticles: Array<{
+  topPosts: Array<{
     id: number;
     slug: string;
     title: string;
@@ -181,7 +181,7 @@ export interface AnalyticsData {
     count: number;
     views: number;
   }>;
-  articleCategoryStats: Array<{
+  postCategoryStats: Array<{
     category: string;
     count: number;
     views: number;

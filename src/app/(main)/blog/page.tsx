@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/skeletons/Skeleton";
 import { BlurImage } from "@/components/BlurImage";
 
-interface Article {
+interface Post {
   id: number;
   slug: string;
   title: string;
@@ -19,12 +19,12 @@ interface Article {
 const categories = ["全部", "技巧分享", "旅行日記", "攝影思考"];
 
 export default function BlogPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("全部");
 
   useEffect(() => {
-    fetch("/api/articles")
+    fetch("/api/posts")
       .then((res) => res.json())
       .then((data) => {
         setArticles(data.articles || []);
@@ -33,12 +33,12 @@ export default function BlogPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const filteredArticles = activeCategory === "全部"
+  const filteredPosts = activeCategory === "全部"
     ? articles
     : articles.filter(a => a.category === activeCategory);
 
-  const featuredArticle = filteredArticles[0];
-  const otherArticles = filteredArticles.slice(1);
+  const featuredPost = filteredPosts[0];
+  const otherPosts = filteredPosts.slice(1);
 
   if (loading) {
     return (
@@ -115,18 +115,18 @@ export default function BlogPage() {
       ) : (
         <>
           {/* Featured Article */}
-          {featuredArticle && (
+          {featuredPost && (
             <section className="max-w-7xl mx-auto px-4 md:px-6 pb-16 md:pb-20">
               <div className="mb-8">
                 <span className="text-xs tracking-[0.2em] uppercase text-[var(--text-muted)]">Featured Story</span>
               </div>
-              <Link href={`/blog/${featuredArticle.slug}`} className="block group">
+              <Link href={`/blog/${featuredPost.slug}`} className="block group">
                 <div className="grid md:grid-cols-2 gap-6 md:gap-12 items-center">
                   {/* Image */}
                   <div className="relative aspect-[4/3] overflow-hidden rounded-sm">
                     <BlurImage
-                      src={featuredArticle.cover}
-                      alt={featuredArticle.title}
+                      src={featuredPost.cover}
+                      alt={featuredPost.title}
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                       className="object-cover group-hover:scale-105"
@@ -138,16 +138,16 @@ export default function BlogPage() {
                   <div className="py-4">
                     <div className="flex items-center gap-3 mb-4">
                       <span className="px-3 py-1 bg-[var(--accent-teal)]/10 text-[var(--accent-teal)] text-xs tracking-wider rounded-full">
-                        {featuredArticle.category}
+                        {featuredPost.category}
                       </span>
-                      <span className="text-xs text-[var(--text-muted)]">{new Date(featuredArticle.date).toLocaleDateString()}</span>
-                      <span className="text-xs text-[var(--text-muted)]">· {featuredArticle.readTime} min read</span>
+                      <span className="text-xs text-[var(--text-muted)]">{new Date(featuredPost.date).toLocaleDateString()}</span>
+                      <span className="text-xs text-[var(--text-muted)]">· {featuredPost.readTime} min read</span>
                     </div>
                     <h2 className="font-serif text-2xl md:text-3xl lg:text-4xl text-[var(--foreground)] mb-4 group-hover:text-[var(--accent-teal)] transition-colors duration-500">
-                      {featuredArticle.title}
+                      {featuredPost.title}
                     </h2>
                     <p className="text-[var(--text-secondary)] leading-relaxed mb-6">
-                      {featuredArticle.excerpt}
+                      {featuredPost.excerpt}
                     </p>
                     <span className="inline-flex items-center gap-2 text-sm text-[var(--accent-teal)] group-hover:gap-3 transition-all duration-300">
                       閱讀全文 <span>→</span>
@@ -185,16 +185,16 @@ export default function BlogPage() {
               </div>
             </div>
 
-            {otherArticles.length > 0 ? (
+            {otherPosts.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
-                {otherArticles.map((article, index) => (
-                  <article key={article.id} className="group">
-                    <Link href={`/blog/${article.slug}`} className="block">
+                {otherPosts.map((post, index) => (
+                  <article key={post.id} className="group">
+                    <Link href={`/blog/${post.slug}`} className="block">
                       {/* Image */}
                       <div className="relative aspect-[16/10] overflow-hidden rounded-sm mb-5">
                         <BlurImage
-                          src={article.cover}
-                          alt={article.title}
+                          src={post.cover}
+                          alt={post.title}
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           className="object-cover group-hover:scale-105"
@@ -208,21 +208,21 @@ export default function BlogPage() {
 
                       {/* Meta */}
                       <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-3">
-                        <span className="text-[var(--accent-teal)]">{article.category}</span>
+                        <span className="text-[var(--accent-teal)]">{post.category}</span>
                         <span>·</span>
-                        <span>{new Date(article.date).toLocaleDateString()}</span>
+                        <span>{new Date(post.date).toLocaleDateString()}</span>
                         <span>·</span>
-                        <span>{article.readTime} min read</span>
+                        <span>{post.readTime} min read</span>
                       </div>
 
                       {/* Title */}
                       <h2 className="font-serif text-xl mb-3 text-[var(--text-primary)] group-hover:text-[var(--accent-teal)] transition-colors duration-500 line-clamp-2">
-                        {article.title}
+                        {post.title}
                       </h2>
 
                       {/* Excerpt */}
                       <p className="text-[var(--text-secondary)] text-sm leading-relaxed line-clamp-2 mb-4">
-                        {article.excerpt}
+                        {post.excerpt}
                       </p>
 
                       {/* Read More */}
@@ -233,7 +233,7 @@ export default function BlogPage() {
                   </article>
                 ))}
               </div>
-            ) : filteredArticles.length <= 1 ? (
+            ) : filteredPosts.length <= 1 ? (
               <div className="text-center py-10">
                 <p className="text-[var(--text-muted)]">此分類尚無其他文章</p>
               </div>

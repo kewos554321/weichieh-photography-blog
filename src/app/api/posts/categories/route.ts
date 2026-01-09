@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/articles/categories - 取得所有 Article Categories
+// GET /api/posts/categories - 取得所有 Post Categories
 export async function GET() {
   try {
-    const categories = await prisma.articleCategory.findMany({
+    const categories = await prisma.postCategory.findMany({
       orderBy: { sortOrder: "asc" },
     });
 
@@ -18,7 +18,7 @@ export async function GET() {
   }
 }
 
-// POST /api/articles/categories - 新增 Article Category
+// POST /api/posts/categories - 新增 Post Category
 export async function POST(request: NextRequest) {
   try {
     const { name, slug, sortOrder } = await request.json();
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         .replace(/\s+/g, "-")
         .trim();
 
-    const category = await prisma.articleCategory.create({
+    const category = await prisma.postCategory.create({
       data: {
         name: name.trim(),
         slug: categorySlug,

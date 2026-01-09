@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Photo {
-  id             Int          @id @default(autoincrement())
-  slug           String       @unique
+  id             Int        @id @default(autoincrement())
+  slug           String     @unique
   title          String
   src            String
   category       String
@@ -19,22 +19,22 @@ model Photo {
   date           DateTime
   camera         String?
   lens           String?
-  story          String       @db.Text
-  behindTheScene String?      @db.Text
-  status         String       @default("published")
+  story          String     @db.Text
+  behindTheScene String?    @db.Text
+  status         String     @default("published")
   publishedAt    DateTime?
-  viewCount      Int          @default(0)
-  likeCount      Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  viewCount      Int        @default(0)
+  likeCount      Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
   tags           PhotoTag[]
 
   // 隱私控制欄位（簡化版）
   visibility String @default("public") // "public" | "private"
 
   // 關聯文章（點擊「閱讀完整故事」）
-  article   Article? @relation(fields: [articleId], references: [id])
-  articleId Int?
+  post   Post? @relation(fields: [postId], references: [id])
+  postId Int?
 
   // 相簿、留言、按讚
   albums   AlbumPhoto[]
@@ -48,7 +48,7 @@ model Photo {
   @@index([date])
   @@index([status])
   @@index([publishedAt])
-  @@index([articleId])
+  @@index([postId])
   @@index([viewCount])
   @@index([likeCount])
   @@index([visibility])
@@ -69,22 +69,22 @@ model PhotoCategory {
   createdAt DateTime @default(now())
 }
 
-model Article {
-  id          Int          @id @default(autoincrement())
-  slug        String       @unique
+model Post {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
   title       String
-  excerpt     String       @db.Text
-  content     String       @db.Text
+  excerpt     String    @db.Text
+  content     String    @db.Text
   cover       String
   category    String
   readTime    Int
   date        DateTime
-  status      String       @default("draft")
+  status      String    @default("draft")
   publishedAt DateTime?
-  viewCount   Int          @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  tags        ArticleTag[]
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tags        PostTag[]
 
   // 關聯照片（文章底部的照片集）
   photos Photo[]
@@ -99,14 +99,14 @@ model Article {
   @@index([viewCount])
 }
 
-model ArticleTag {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  articles  Article[]
-  createdAt DateTime  @default(now())
+model PostTag {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  posts     Post[]
+  createdAt DateTime @default(now())
 }
 
-model ArticleCategory {
+model PostCategory {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   slug      String   @unique
@@ -144,18 +144,18 @@ model Media {
 }
 
 model MediaFolder {
-  id        Int            @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String
-  slug      String         @unique
-  sortOrder Int            @default(0)
+  slug      String   @unique
+  sortOrder Int      @default(0)
   media     Media[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // 階層結構
-  parentId  Int?
-  parent    MediaFolder?   @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children  MediaFolder[]  @relation("FolderHierarchy")
+  parentId Int?
+  parent   MediaFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children MediaFolder[] @relation("FolderHierarchy")
 
   @@unique([parentId, name]) // 同一層內名稱不重複
   @@index([slug])
@@ -242,13 +242,13 @@ model Comment {
   status    CommentStatus @default(PENDING)
   photo     Photo?        @relation(fields: [photoId], references: [id], onDelete: Cascade)
   photoId   Int?
-  article   Article?      @relation(fields: [articleId], references: [id], onDelete: Cascade)
-  articleId Int?
+  post      Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    Int?
   ipHash    String
   createdAt DateTime      @default(now())
 
   @@index([photoId])
-  @@index([articleId])
+  @@index([postId])
   @@index([status])
   @@index([createdAt])
 }
@@ -276,10 +276,10 @@ model Like {
 
 model AccessToken {
   id        String    @id @default(cuid())
-  name      String                          // 名稱，例如 "攝影圈朋友"
-  token     String    @unique               // 實際的 token 字串
-  expiresAt DateTime?                       // 過期時間（可選）
-  isActive  Boolean   @default(true)        // 是否啟用
+  name      String // 名稱，例如 "攝影圈朋友"
+  token     String    @unique // 實際的 token 字串
+  expiresAt DateTime? // 過期時間（可選）
+  isActive  Boolean   @default(true) // 是否啟用
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -293,10 +293,10 @@ model AccessToken {
 }
 
 model AccessTokenPhoto {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   accessTokenId String
   photoId       Int
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime @default(now())
 
   accessToken AccessToken @relation(fields: [accessTokenId], references: [id], onDelete: Cascade)
   photo       Photo       @relation(fields: [photoId], references: [id], onDelete: Cascade)
@@ -307,10 +307,10 @@ model AccessTokenPhoto {
 }
 
 model AccessTokenAlbum {
-  id            String      @id @default(cuid())
+  id            String   @id @default(cuid())
   accessTokenId String
   albumId       Int
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime @default(now())
 
   accessToken AccessToken @relation(fields: [accessTokenId], references: [id], onDelete: Cascade)
   album       Album       @relation(fields: [albumId], references: [id], onDelete: Cascade)

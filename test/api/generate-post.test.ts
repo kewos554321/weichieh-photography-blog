@@ -20,7 +20,7 @@ vi.mock("@google/generative-ai", () => {
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-import { POST } from "@/app/api/ai/generate-article/route";
+import { POST } from "@/app/api/ai/generate-post/route";
 
 describe("Generate Article API", () => {
   const originalEnv = process.env;
@@ -31,7 +31,7 @@ describe("Generate Article API", () => {
   });
 
   it("should return error when imageUrl is missing", async () => {
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({}),
     });
@@ -46,7 +46,7 @@ describe("Generate Article API", () => {
   it("should return error when GEMINI_API_KEY is not configured", async () => {
     process.env.GEMINI_API_KEY = "";
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({ imageUrl: "https://example.com/image.jpg" }),
     });
@@ -63,7 +63,7 @@ describe("Generate Article API", () => {
       ok: false,
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({ imageUrl: "https://example.com/image.jpg" }),
     });
@@ -99,7 +99,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -138,7 +138,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.png",
@@ -176,7 +176,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -206,7 +206,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -243,7 +243,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -279,7 +279,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -302,7 +302,7 @@ describe("Generate Article API", () => {
 
     mockGenerateContent.mockRejectedValueOnce(new Error("AI Error"));
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -335,7 +335,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -375,7 +375,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",
@@ -408,7 +408,7 @@ describe("Generate Article API", () => {
       },
     });
 
-    const request = new NextRequest("http://localhost/api/ai/generate-article", {
+    const request = new NextRequest("http://localhost/api/ai/generate-post", {
       method: "POST",
       body: JSON.stringify({
         imageUrl: "https://example.com/image.jpg",

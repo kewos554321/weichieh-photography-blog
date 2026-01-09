@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// PUT /api/articles/tags/[id] - 更新 Article Tag
+// PUT /api/posts/tags/[id] - 更新 Post Tag
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,7 +23,7 @@ export async function PUT(
       );
     }
 
-    const tag = await prisma.articleTag.update({
+    const tag = await prisma.postTag.update({
       where: { id: tagId },
       data: { name: name.trim() },
     });
@@ -47,7 +47,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/articles/tags/[id] - 刪除 Article Tag
+// DELETE /api/posts/tags/[id] - 刪除 Post Tag
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,7 +60,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid tag ID" }, { status: 400 });
     }
 
-    await prisma.articleTag.delete({
+    await prisma.postTag.delete({
       where: { id: tagId },
     });
 

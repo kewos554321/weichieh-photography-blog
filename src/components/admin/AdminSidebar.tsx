@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 
-type Section = "photos" | "albums" | "articles" | "media" | "categories-tags" | "tokens" | "comments" | "analytics" | "settings";
+type Section = "photos" | "albums" | "posts" | "media" | "categories-tags" | "tokens" | "comments" | "analytics" | "settings";
 
 interface SubNavItem {
   label: string;
@@ -50,10 +50,10 @@ const navItems: NavItem[] = [
     href: "/admin/albums",
   },
   {
-    section: "articles",
+    section: "posts",
     label: "Posts",
     icon: FileText,
-    href: "/admin/articles",
+    href: "/admin/posts",
   },
   {
     section: "media",
@@ -103,7 +103,10 @@ export function AdminSidebar() {
 
   // Close sidebar when route changes (mobile)
   useEffect(() => {
-    setIsOpen(false);
+    if (isOpen) {
+      setIsOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Close sidebar on escape key
@@ -118,7 +121,7 @@ export function AdminSidebar() {
   const getActiveSection = (): Section | null => {
     if (pathname.startsWith("/admin/photos")) return "photos";
     if (pathname.startsWith("/admin/albums")) return "albums";
-    if (pathname.startsWith("/admin/articles")) return "articles";
+    if (pathname.startsWith("/admin/posts")) return "posts";
     if (pathname.startsWith("/admin/media")) return "media";
     if (pathname.startsWith("/admin/categories-tags")) return "categories-tags";
     if (pathname.startsWith("/admin/tokens")) return "tokens";
@@ -134,7 +137,7 @@ export function AdminSidebar() {
     // 完全匹配，或者是子路徑
     if (pathname === href) return true;
     // 特殊處理：如果是列表頁面，只有完全匹配才算
-    if (href === "/admin/photos" || href === "/admin/articles" || href === "/admin/media" || href === "/admin/settings") {
+    if (href === "/admin/photos" || href === "/admin/posts" || href === "/admin/media" || href === "/admin/settings") {
       return pathname === href;
     }
     return pathname.startsWith(href);

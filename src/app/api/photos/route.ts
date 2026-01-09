@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         behindTheScene: body.behindTheScene || null,
         status: body.status || "draft",
         publishedAt: body.publishedAt ? new Date(body.publishedAt) : null,
-        articleId: body.articleId || null,
+        postId: body.postId || null,
         // 隱私控制欄位（簡化版）
         visibility: body.visibility || "public",
         ...(body.tagIds && {
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         tags: true,
-        article: {
+        post: {
           select: {
             id: true,
             slug: true,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
-import { generateUniqueArticleSlug } from "@/lib/slug";
+import { generateUniquePostSlug } from "@/lib/slug";
 
 type RouteParams = { params: Promise<{ slug: string }> };
 
@@ -14,7 +14,7 @@ const S3 = new S3Client({
   },
 });
 
-// GET /api/articles/[slug] - 取得單篇文章
+// GET /api/posts/[slug] - 取得單篇文章
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const admin = searchParams.get("admin") === "true";
     const includeContext = searchParams.get("context") === "true";
 
-    const article = await prisma.article.findUnique({
+    const article = await prisma.post.findUnique({
       where: { slug },
       include: {
         tags: true,
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
 
     if (!article) {
-      return NextResponse.json({ error: "Article not found" }, { status: 404 });
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // 非管理員只能查看已發佈且發佈時間已到的內容
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         !article.publishedAt || article.publishedAt <= new Date();
       if (!isPublished || !isScheduleReady) {
         return NextResponse.json(
-          { error: "Article not found" },
+          { error: "Post not found" },
           { status: 404 }
         );
       }
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       };
 
       // Fetch related articles (same category, exclude current, limit 2)
-      const relatedArticles = await prisma.article.findMany({
+      const relatedPosts = await prisma.post.findMany({
         where: {
           ...baseWhere,
           category: article.category,
@@ -83,8 +83,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
 
       // Fetch prev/next articles for navigation (by date order)
-      const [prevArticle, nextArticle] = await Promise.all([
-        prisma.article.findFirst({
+      const [prevPost, nextPost] = await Promise.all([
+        prisma.post.findFirst({
           where: {
             ...baseWhere,
             date: { lt: article.date },
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           select: { slug: true, title: true },
           orderBy: { date: "desc" },
         }),
-        prisma.article.findFirst({
+        prisma.post.findFirst({
           where: {
             ...baseWhere,
             date: { gt: article.date },
@@ -104,8 +104,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
       return NextResponse.json({
         ...article,
-        related: relatedArticles,
-        navigation: { prev: prevArticle, next: nextArticle },
+        related: relatedPosts,
+        navigation: { prev: prevPost, next: nextPost },
       });
     }
 
@@ -119,26 +119,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PUT /api/articles/[slug] - 更新文章
+// PUT /api/posts/[slug] - 更新文章
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
     const body = await request.json();
 
     // 取得目前的文章
-    const currentArticle = await prisma.article.findUnique({
+    const currentPost = await prisma.post.findUnique({
       where: { slug },
       select: { title: true },
     });
 
-    if (!currentArticle) {
-      return NextResponse.json({ error: "Article not found" }, { status: 404 });
+    if (!currentPost) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // 如果 title 有變更，重新產生 slug
     let newSlug: string | undefined;
-    if (body.title && body.title !== currentArticle.title) {
-      newSlug = await generateUniqueArticleSlug(body.title, slug);
+    if (body.title && body.title !== currentPost.title) {
+      newSlug = await generateUniquePostSlug(body.title, slug);
     }
 
     // 重新計算閱讀時間
@@ -146,7 +146,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       ? Math.ceil(body.content.length / 300)
       : undefined;
 
-    const article = await prisma.article.update({
+    const article = await prisma.post.update({
       where: { slug },
       data: {
         title: body.title,
@@ -185,18 +185,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/articles/[slug] - 刪除文章
+// DELETE /api/posts/[slug] - 刪除文章
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
 
     // 先取得文章資訊以獲取封面圖片 URL
-    const article = await prisma.article.findUnique({
+    const article = await prisma.post.findUnique({
       where: { slug },
     });
 
     if (!article) {
-      return NextResponse.json({ error: "Article not found" }, { status: 404 });
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // 從 URL 提取 R2 key
@@ -219,7 +219,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // 刪除資料庫記錄
-    await prisma.article.delete({
+    await prisma.post.delete({
       where: { slug },
     });
 

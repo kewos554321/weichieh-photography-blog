@@ -15,7 +15,7 @@ export async function publishScheduledContent(): Promise<PublishResult> {
 
   // 並行更新文章和照片
   const [articlesResult, photosResult] = await Promise.all([
-    prisma.article.updateMany({
+    prisma.post.updateMany({
       where: {
         status: "scheduled",
         publishedAt: {
@@ -94,7 +94,7 @@ export async function publishSinglePhoto(id: number) {
 }
 
 export async function publishSingleArticle(id: number) {
-  return prisma.article.update({
+  return prisma.post.update({
     where: { id },
     data: {
       status: "published",
@@ -117,7 +117,7 @@ export async function schedulePhoto(id: number, publishAt: Date) {
 }
 
 export async function scheduleArticle(id: number, publishAt: Date) {
-  return prisma.article.update({
+  return prisma.post.update({
     where: { id },
     data: {
       status: "scheduled",
@@ -140,7 +140,7 @@ export async function unschedulePhoto(id: number) {
 }
 
 export async function unscheduleArticle(id: number) {
-  return prisma.article.update({
+  return prisma.post.update({
     where: { id },
     data: {
       status: "draft",

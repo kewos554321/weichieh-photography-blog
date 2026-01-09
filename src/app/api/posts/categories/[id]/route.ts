@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// PUT /api/articles/categories/[id] - 更新 Article Category
+// PUT /api/posts/categories/[id] - 更新 Post Category
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,7 +26,7 @@ export async function PUT(
       );
     }
 
-    const category = await prisma.articleCategory.update({
+    const category = await prisma.postCategory.update({
       where: { id: categoryId },
       data: {
         name: name.trim(),
@@ -57,7 +57,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/articles/categories/[id] - 刪除 Article Category
+// DELETE /api/posts/categories/[id] - 刪除 Post Category
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -74,8 +74,8 @@ export async function DELETE(
     }
 
     // 檢查是否有文章使用此分類
-    const articlesUsingCategory = await prisma.article.count({
-      where: { category: (await prisma.articleCategory.findUnique({ where: { id: categoryId } }))?.name },
+    const articlesUsingCategory = await prisma.post.count({
+      where: { category: (await prisma.postCategory.findUnique({ where: { id: categoryId } }))?.name },
     });
 
     if (articlesUsingCategory > 0) {
@@ -85,7 +85,7 @@ export async function DELETE(
       );
     }
 
-    await prisma.articleCategory.delete({
+    await prisma.postCategory.delete({
       where: { id: categoryId },
     });
 

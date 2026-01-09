@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useUpload } from "@/hooks/useUpload";
 import MarkdownContent from "@/components/MarkdownContent";
-import type { Article, ArticleTag, Category } from "../types";
+import type { Post, PostTag, Category } from "../types";
 import {
   Plus,
   Search,
@@ -21,15 +21,15 @@ import {
   Wand2,
 } from "lucide-react";
 
-interface ArticleModalProps {
-  article: Article | null;
-  tags: ArticleTag[];
+interface PostModalProps {
+  article: Post | null;
+  tags: PostTag[];
   categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function ArticleModal({ article, tags, categories, onClose, onSuccess }: ArticleModalProps) {
+export function PostModal({ article, tags, categories, onClose, onSuccess }: PostModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
     article?.cover || null
   );
   const [newTagName, setNewTagName] = useState("");
-  const [localTags, setLocalTags] = useState<ArticleTag[]>(tags);
+  const [localTags, setLocalTags] = useState<PostTag[]>(tags);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingSlug, setIsGeneratingSlug] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -125,7 +125,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
   const handleAddTag = async () => {
     if (!newTagName.trim()) return;
     try {
-      const res = await fetch("/api/articles/tags", {
+      const res = await fetch("/api/posts/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newTagName.trim() }),
@@ -142,7 +142,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
   };
 
   // AI 生成文章
-  const handleGenerateArticle = async () => {
+  const handleGeneratePost = async () => {
     const imageUrl = coverPreview?.startsWith("data:") ? null : coverPreview;
     if (!imageUrl && !formData.cover) {
       setError("請先上傳封面圖片才能使用 AI 生成");
@@ -161,7 +161,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
         setCoverPreview(publicUrl);
       }
 
-      const res = await fetch("/api/ai/generate-article", {
+      const res = await fetch("/api/ai/generate-post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -189,7 +189,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
             aiTagIds.push(existingTag.id);
           } else {
             try {
-              const tagRes = await fetch("/api/articles/tags", {
+              const tagRes = await fetch("/api/posts/tags", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: tagName }),
@@ -342,7 +342,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
         tagIds: formData.tagIds,
       };
 
-      const url = isEditMode ? `/api/articles/${article.slug}` : "/api/articles";
+      const url = isEditMode ? `/api/posts/${article.slug}` : "/api/posts";
       const method = isEditMode ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -371,7 +371,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
         <div className="flex items-center justify-between p-4 border-b border-stone-200">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            {isEditMode ? "Edit Article" : "Add New Article"}
+            {isEditMode ? "Edit Post" : "Add New Post"}
           </h2>
           <button
             onClick={onClose}
@@ -403,7 +403,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
               </div>
               <button
                 type="button"
-                onClick={handleGenerateArticle}
+                onClick={handleGeneratePost}
                 disabled={isGenerating || (!coverPreview && !formData.cover)}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
@@ -902,7 +902,7 @@ export function ArticleModal({ article, tags, categories, onClose, onSuccess }: 
               disabled={isSubmitting || isUploading}
               className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors disabled:bg-stone-400"
             >
-              {isSubmitting || isUploading ? "Saving..." : isEditMode ? "Save Changes" : "Create Article"}
+              {isSubmitting || isUploading ? "Saving..." : isEditMode ? "Save Changes" : "Create Post"}
             </button>
           </div>
         </form>

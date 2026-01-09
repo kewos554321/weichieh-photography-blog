@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status"); // PENDING, APPROVED, REJECTED
   const photoId = searchParams.get("photoId");
-  const articleId = searchParams.get("articleId");
+  const postId = searchParams.get("postId");
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const skip = (page - 1) * limit;
@@ -16,14 +16,14 @@ export async function GET(request: Request) {
     const where: {
       status?: "PENDING" | "APPROVED" | "REJECTED";
       photoId?: number;
-      articleId?: number;
+      postId?: number;
     } = {};
 
     if (status === "PENDING" || status === "APPROVED" || status === "REJECTED") {
       where.status = status;
     }
     if (photoId) where.photoId = parseInt(photoId);
-    if (articleId) where.articleId = parseInt(articleId);
+    if (postId) where.postId = parseInt(postId);
 
     const [comments, total] = await Promise.all([
       prisma.comment.findMany({
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
           photo: {
             select: { id: true, slug: true, title: true },
           },
-          article: {
+          post: {
             select: { id: true, slug: true, title: true },
           },
         },
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, content, photoId, articleId } = await request.json();
+    const { name, content, photoId, postId } = await request.json();
 
     // Validation
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!photoId && !articleId) {
+    if (!photoId && !postId) {
       return NextResponse.json(
         { error: "請指定照片或文章" },
         { status: 400 }
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         name: name.trim().slice(0, 50), // Max 50 chars for name
         content: content.trim(),
         photoId: photoId ? parseInt(photoId) : null,
-        articleId: articleId ? parseInt(articleId) : null,
+        postId: postId ? parseInt(postId) : null,
         ipHash,
         status: "PENDING",
       },

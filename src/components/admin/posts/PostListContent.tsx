@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
-import type { Article, ArticleTag, Category } from "../types";
-import { ArticleModal } from "./ArticleModal";
+import type { Post, PostTag, Category } from "../types";
+import { PostModal } from "./PostModal";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import {
@@ -17,16 +17,16 @@ import {
   Clock,
 } from "lucide-react";
 
-export function ArticleListContent() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [tags, setTags] = useState<ArticleTag[]>([]);
+export function PostListContent() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [tags, setTags] = useState<PostTag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("全部");
   const [tagFilter, setTagFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const {
     selectedCount,
@@ -38,11 +38,11 @@ export function ArticleListContent() {
     setIsBulkUpdating,
     isSelected,
   } = useBulkSelection({
-    items: articles,
-    getItemId: (article) => article.id,
+    items: posts,
+    getItemId: (post) => post.id,
   });
 
-  const fetchArticles = useCallback(async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       params.set("admin", "true");
@@ -50,11 +50,11 @@ export function ArticleListContent() {
       if (categoryFilter !== "全部") params.set("category", categoryFilter);
       if (tagFilter) params.set("tag", tagFilter);
 
-      const res = await fetch(`/api/articles?${params.toString()}`);
+      const res = await fetch(`/api/posts?${params.toString()}`);
       const data = await res.json();
-      setArticles(data.articles || []);
+      setPosts(data.posts || []);
     } catch {
-      console.error("Failed to fetch articles");
+      console.error("Failed to fetch posts");
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +62,7 @@ export function ArticleListContent() {
 
   const fetchTags = useCallback(async () => {
     try {
-      const res = await fetch("/api/articles/tags");
+      const res = await fetch("/api/posts/tags");
       const data = await res.json();
       setTags(Array.isArray(data) ? data : []);
     } catch {
@@ -72,7 +72,7 @@ export function ArticleListContent() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/articles/categories");
+      const res = await fetch("/api/posts/categories");
       const data = await res.json();
       setCategories(Array.isArray(data) ? data : []);
     } catch {
@@ -86,39 +86,39 @@ export function ArticleListContent() {
     fetchCategories();
   }, [fetchTags, fetchCategories]);
 
-  // Fetch articles when filters change
+  // Fetch posts when filters change
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    fetchPosts();
+  }, [fetchPosts]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這篇文章嗎？")) return;
     try {
-      await fetch(`/api/articles/${slug}`, { method: "DELETE" });
-      setArticles(articles.filter((a) => a.slug !== slug));
+      await fetch(`/api/posts/${slug}`, { method: "DELETE" });
+      setPosts(posts.filter((p) => p.slug !== slug));
     } catch {
       alert("刪除失敗");
     }
   };
 
-  const handleEdit = (article: Article) => {
-    setEditingArticle(article);
+  const handleEdit = (post: Post) => {
+    setEditingPost(post);
     setIsModalOpen(true);
   };
 
   const handleCreate = () => {
-    setEditingArticle(null);
+    setEditingPost(null);
     setIsModalOpen(true);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
-    setEditingArticle(null);
+    setEditingPost(null);
   };
 
   const handleModalSuccess = () => {
     handleModalClose();
-    fetchArticles();
+    fetchPosts();
     fetchTags();
   };
 
@@ -132,20 +132,20 @@ export function ArticleListContent() {
     if (selectedCount === 0) return;
     setIsBulkUpdating(true);
     try {
-      const promises = articles
-        .filter((a) => isSelected(a.id))
-        .map((article) =>
-          fetch(`/api/articles/${article.slug}`, {
+      const promises = posts
+        .filter((p) => isSelected(p.id))
+        .map((post) =>
+          fetch(`/api/posts/${post.slug}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status }),
           })
         );
       await Promise.all(promises);
-      fetchArticles();
+      fetchPosts();
       clearSelection();
     } catch {
-      alert("Failed to update articles");
+      alert("Failed to update posts");
     } finally {
       setIsBulkUpdating(false);
     }
@@ -156,16 +156,16 @@ export function ArticleListContent() {
     if (!confirm(`確定要刪除 ${selectedCount} 篇文章嗎？此操作無法復原。`)) return;
     setIsBulkUpdating(true);
     try {
-      const promises = articles
-        .filter((a) => isSelected(a.id))
-        .map((article) =>
-          fetch(`/api/articles/${article.slug}`, { method: "DELETE" })
+      const promises = posts
+        .filter((p) => isSelected(p.id))
+        .map((post) =>
+          fetch(`/api/posts/${post.slug}`, { method: "DELETE" })
         );
       await Promise.all(promises);
-      fetchArticles();
+      fetchPosts();
       clearSelection();
     } catch {
-      alert("Failed to delete articles");
+      alert("Failed to delete posts");
     } finally {
       setIsBulkUpdating(false);
     }
@@ -192,13 +192,13 @@ export function ArticleListContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-stone-900">Articles</h1>
+        <h1 className="text-2xl font-semibold text-stone-900">Posts</h1>
         <button
           onClick={handleCreate}
           className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Add Article
+          Add Post
         </button>
       </div>
 
@@ -209,7 +209,7 @@ export function ArticleListContent() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            placeholder="Search articles..."
+            placeholder="Search posts..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 pr-4 py-2 border border-stone-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-stone-500 w-64 bg-white"
@@ -261,8 +261,8 @@ export function ArticleListContent() {
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-stone-500">Loading...</div>
-        ) : articles.length === 0 ? (
-          <div className="p-8 text-center text-stone-500">No articles found</div>
+        ) : posts.length === 0 ? (
+          <div className="p-8 text-center text-stone-500">No posts found</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -300,21 +300,21 @@ export function ArticleListContent() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-200">
-                {articles.map((article) => (
-                  <tr key={article.id} className={`hover:bg-stone-50 ${isSelected(article.id) ? "bg-stone-50" : ""}`}>
+                {posts.map((post) => (
+                  <tr key={post.id} className={`hover:bg-stone-50 ${isSelected(post.id) ? "bg-stone-50" : ""}`}>
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        checked={isSelected(article.id)}
-                        onChange={() => toggleSelect(article.id)}
+                        checked={isSelected(post.id)}
+                        onChange={() => toggleSelect(post.id)}
                         className="w-4 h-4 rounded border-stone-300 text-stone-900 focus:ring-stone-500"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <div className="relative w-20 h-12 rounded overflow-hidden">
                         <Image
-                          src={article.cover}
-                          alt={article.title}
+                          src={post.cover}
+                          alt={post.title}
                           fill
                           className="object-cover"
                         />
@@ -322,20 +322,20 @@ export function ArticleListContent() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-stone-900 max-w-xs truncate">
-                        {article.title}
+                        {post.title}
                       </div>
                       <div className="text-xs text-stone-500">
-                        {article.readTime} min read
+                        {post.readTime} min read
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">
-                        {article.category}
+                        {post.category}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {article.tags?.map((tag) => (
+                        {post.tags?.map((tag) => (
                           <span
                             key={tag.id}
                             className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded"
@@ -346,20 +346,20 @@ export function ArticleListContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {article.status === "published" ? (
+                      {post.status === "published" ? (
                         <span className="flex items-center gap-1 text-xs text-green-700">
                           <Eye className="w-3 h-3" />
                           Published
                         </span>
-                      ) : article.status === "scheduled" ? (
+                      ) : post.status === "scheduled" ? (
                         <span className="flex flex-col gap-0.5">
                           <span className="flex items-center gap-1 text-xs text-amber-600">
                             <Clock className="w-3 h-3" />
                             Scheduled
                           </span>
-                          {article.publishedAt && (
+                          {post.publishedAt && (
                             <span className="text-[10px] text-stone-400">
-                              {new Date(article.publishedAt).toLocaleString()}
+                              {new Date(post.publishedAt).toLocaleString()}
                             </span>
                           )}
                         </span>
@@ -371,18 +371,18 @@ export function ArticleListContent() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-500">
-                      {new Date(article.date).toLocaleDateString()}
+                      {new Date(post.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handleEdit(article)}
+                          onClick={() => handleEdit(post)}
                           className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(article.slug)}
+                          onClick={() => handleDelete(post.slug)}
                           className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -399,8 +399,8 @@ export function ArticleListContent() {
 
       {/* Modal */}
       {isModalOpen && (
-        <ArticleModal
-          article={editingArticle}
+        <PostModal
+          post={editingPost}
           tags={tags}
           categories={categories}
           onClose={handleModalClose}
