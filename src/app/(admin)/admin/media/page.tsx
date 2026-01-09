@@ -14,11 +14,8 @@ function MediaLibraryLoading() {
 
 export default function MediaPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-stone-900 mb-6">Media Library</h1>
-      <Suspense fallback={<MediaLibraryLoading />}>
-        <MediaLibraryContent />
-      </Suspense>
-    </div>
+    <Suspense fallback={<MediaLibraryLoading />}>
+      <MediaLibraryContent />
+    </Suspense>
   );
 }
