@@ -109,11 +109,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    return NextResponse.json(article);
+    return NextResponse.json(post);
   } catch (error) {
     console.error("Get post error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch article" },
+      { error: "Failed to fetch post" },
       { status: 500 }
     );
   }
@@ -175,11 +175,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    return NextResponse.json(article);
+    return NextResponse.json(post);
   } catch (error) {
     console.error("Update post error:", error);
     return NextResponse.json(
-      { error: "Failed to update article" },
+      { error: "Failed to update post" },
       { status: 500 }
     );
   }
@@ -227,7 +227,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   } catch (error) {
     console.error("Delete post error:", error);
     return NextResponse.json(
-      { error: "Failed to delete article" },
+      { error: "Failed to delete post" },
       { status: 500 }
     );
   }
