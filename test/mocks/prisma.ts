@@ -12,7 +12,7 @@ export const mockPrisma = {
     aggregate: vi.fn(),
     groupBy: vi.fn(),
   },
-  article: {
+  post: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
@@ -30,7 +30,7 @@ export const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
-  articleTag: {
+  postTag: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
@@ -44,7 +44,7 @@ export const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
-  articleCategory: {
+  postCategory: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),

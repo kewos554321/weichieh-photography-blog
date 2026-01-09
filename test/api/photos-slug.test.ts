@@ -394,39 +394,39 @@ describe("Photos [slug] API", () => {
       );
     });
 
-    it("should update articleId when provided", async () => {
-      const mockPhoto = { id: 1, slug: "test-photo", articleId: 5 };
+    it("should update postId when provided", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", postId: 5 };
       mockPrisma.photo.findUnique.mockResolvedValue(mockCurrentPhoto);
       mockPrisma.photo.update.mockResolvedValue(mockPhoto);
 
       await PUT(
-        createRequest("test-photo", "PUT", { articleId: 5 }),
+        createRequest("test-photo", "PUT", { postId: 5 }),
         createParams("test-photo")
       );
 
       expect(mockPrisma.photo.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            articleId: 5,
+            postId: 5,
           }),
         })
       );
     });
 
-    it("should clear articleId when set to null", async () => {
-      const mockPhoto = { id: 1, slug: "test-photo", articleId: null };
+    it("should clear postId when set to null", async () => {
+      const mockPhoto = { id: 1, slug: "test-photo", postId: null };
       mockPrisma.photo.findUnique.mockResolvedValue(mockCurrentPhoto);
       mockPrisma.photo.update.mockResolvedValue(mockPhoto);
 
       await PUT(
-        createRequest("test-photo", "PUT", { articleId: null }),
+        createRequest("test-photo", "PUT", { postId: null }),
         createParams("test-photo")
       );
 
       expect(mockPrisma.photo.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            articleId: null,
+            postId: null,
           }),
         })
       );

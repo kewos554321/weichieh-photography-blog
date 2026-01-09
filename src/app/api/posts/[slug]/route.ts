@@ -103,7 +103,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ]);
 
       return NextResponse.json({
-        ...article,
+        ...post,
         related: relatedPosts,
         navigation: { prev: prevPost, next: nextPost },
       });

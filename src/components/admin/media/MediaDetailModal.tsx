@@ -276,7 +276,7 @@ export function MediaDetailModal({
                 </div>
 
                 {/* Usage */}
-                {details && (details.usage.photos.length > 0 || details.usage.articles.length > 0) && (
+                {details && (details.usage.photos.length > 0 || details.usage.posts.length > 0) && (
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium text-stone-700">
                       使用中
@@ -287,9 +287,9 @@ export function MediaDetailModal({
                           照片: {details.usage.photos.map((p) => p.title).join(", ")}
                         </p>
                       )}
-                      {details.usage.articles.length > 0 && (
+                      {details.usage.posts.length > 0 && (
                         <p>
-                          文章: {details.usage.articles.map((a) => a.title).join(", ")}
+                          文章: {details.usage.posts.map((a) => a.title).join(", ")}
                         </p>
                       )}
                     </div>

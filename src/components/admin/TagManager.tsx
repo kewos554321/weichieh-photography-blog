@@ -8,7 +8,7 @@ import {
   X,
   CheckCircle,
 } from "lucide-react";
-import type { PhotoTag, ArticleTag } from "./types";
+import type { PhotoTag, PostTag } from "./types";
 
 interface TagManagerProps {
   title: string;
@@ -17,7 +17,7 @@ interface TagManagerProps {
 }
 
 export function TagManager({ title, apiPath, countField }: TagManagerProps) {
-  const [items, setItems] = useState<(PhotoTag | ArticleTag)[]>([]);
+  const [items, setItems] = useState<(PhotoTag | PostTag)[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -96,7 +96,7 @@ export function TagManager({ title, apiPath, countField }: TagManagerProps) {
     }
   };
 
-  const startEdit = (item: PhotoTag | ArticleTag) => {
+  const startEdit = (item: PhotoTag | PostTag) => {
     setEditingId(item.id);
     setEditingName(item.name);
   };
@@ -106,7 +106,7 @@ export function TagManager({ title, apiPath, countField }: TagManagerProps) {
     setEditingName("");
   };
 
-  const getCount = (item: PhotoTag | ArticleTag) => {
+  const getCount = (item: PhotoTag | PostTag) => {
     const count = item._count as Record<string, number> | undefined;
     return count?.[countField] ?? 0;
   };

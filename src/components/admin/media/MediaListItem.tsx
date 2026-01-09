@@ -96,7 +96,7 @@ export function MediaListItem({
             {media.filename}
           </span>
           {/* Usage badges */}
-          {media._usage && (media._usage.photoCount > 0 || media._usage.articleCount > 0) && (
+          {media._usage && (media._usage.photoCount > 0 || media._usage.postCount > 0) && (
             <div className="flex items-center gap-1">
               {media._usage.photoCount > 0 && (
                 <span
@@ -107,13 +107,13 @@ export function MediaListItem({
                   {media._usage.photoCount}
                 </span>
               )}
-              {media._usage.articleCount > 0 && (
+              {media._usage.postCount > 0 && (
                 <span
                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-violet-50 text-violet-700 rounded"
-                  title={`${media._usage.articleCount} 篇文章使用中`}
+                  title={`${media._usage.postCount} 篇文章使用中`}
                 >
                   <FileText className="w-3 h-3" />
-                  {media._usage.articleCount}
+                  {media._usage.postCount}
                 </span>
               )}
             </div>

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(article, { status: 201 });
+    return NextResponse.json(post, { status: 201 });
   } catch (error) {
     console.error("Create post error:", error);
     return NextResponse.json(
