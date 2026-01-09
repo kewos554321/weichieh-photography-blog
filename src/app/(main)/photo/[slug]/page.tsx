@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { CommentForm, CommentList } from "@/components/comments";
 import { LikeButton } from "@/components/photo";
+import { EnhancedLightbox } from "@/components/lightbox/EnhancedLightbox";
+import { Maximize2 } from "lucide-react";
 
 interface PhotoTag {
   id: number;
@@ -71,6 +73,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
   const [isLoading, setIsLoading] = useState(true);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const [commentRefreshKey, setCommentRefreshKey] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     params.then((p) => setSlug(p.slug));
@@ -144,7 +147,7 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
       {/* Hero Section - Image Left, Info Right */}
       <section className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-16">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
-          {/* Image */}
+          {/* Image - Click to open lightbox */}
           <div className="relative aspect-[4/3] overflow-hidden rounded-sm group">
             <Image
               src={photo.src}
@@ -159,6 +162,14 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
             {!isImageLoaded && (
               <div className="absolute inset-0 bg-stone-200 animate-pulse" />
             )}
+            {/* Lightbox Button - same as homepage */}
+            <button
+              onClick={() => setLightboxOpen(true)}
+              className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 text-white/70 hover:text-white rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 cursor-zoom-in"
+              aria-label="Open in lightbox"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Info */}
@@ -411,6 +422,20 @@ export default function PhotoPage({ params }: { params: Promise<{ slug: string }
         </div>
       </section>
 
+      {/* Lightbox - Single photo only */}
+      {lightboxOpen && photo && (
+        <EnhancedLightbox
+          photos={[{
+            id: photo.id,
+            slug: photo.slug,
+            src: photo.src,
+            title: photo.title,
+          }]}
+          currentIndex={0}
+          onClose={() => setLightboxOpen(false)}
+          onNavigate={() => {}}
+        />
+      )}
     </div>
   );
 }
