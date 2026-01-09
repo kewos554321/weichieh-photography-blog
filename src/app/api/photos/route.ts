@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
     const admin = searchParams.get("admin") === "true";
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const sortField = searchParams.get("sortField") || "date";
+    const sortDirection = searchParams.get("sortDirection") || "desc";
 
     // 取得訪客 token
     const visitorToken = request.cookies.get("visitor_token")?.value;
@@ -84,10 +86,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Build orderBy based on sortField
+    const orderByMap: Record<string, Record<string, "asc" | "desc">> = {
+      title: { title: sortDirection as "asc" | "desc" },
+      location: { location: sortDirection as "asc" | "desc" },
+      category: { category: sortDirection as "asc" | "desc" },
+      status: { status: sortDirection as "asc" | "desc" },
+      date: { date: sortDirection as "asc" | "desc" },
+    };
+    const orderBy = orderByMap[sortField] || { date: "desc" };
+
     const [photos, total] = await Promise.all([
       prisma.photo.findMany({
         where,
-        orderBy: { date: "desc" },
+        orderBy,
         take: limit,
         skip: offset,
         include: {

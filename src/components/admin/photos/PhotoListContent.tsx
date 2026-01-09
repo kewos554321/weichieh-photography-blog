@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Photo, PhotoTag, Category } from "../types";
 import { PhotoModal } from "./PhotoModal";
 import { BatchUploadModal } from "./BatchUploadModal";
@@ -19,13 +19,23 @@ import {
   Clock,
   Upload,
   Star,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
 } from "lucide-react";
+
+type SortField = "title" | "location" | "category" | "status" | "date";
+type SortDirection = "asc" | "desc";
+const PAGE_SIZE = 20;
 
 export function PhotoListContent() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [tags, setTags] = useState<PhotoTag[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [tagFilter, setTagFilter] = useState("");
@@ -34,6 +44,12 @@ export function PhotoListContent() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
   const [isSettingCover, setIsSettingCover] = useState(false);
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   const {
     selectedCount,
@@ -49,10 +65,19 @@ export function PhotoListContent() {
     getItemId: (photo) => photo.id,
   });
 
-  const fetchPhotos = useCallback(async () => {
+  const fetchPhotos = useCallback(async (pageNum: number, isInitial: boolean = false) => {
     try {
+      if (isInitial) {
+        setIsLoading(true);
+      } else {
+        setIsPageLoading(true);
+      }
       const params = new URLSearchParams();
       params.set("admin", "true");
+      params.set("limit", PAGE_SIZE.toString());
+      params.set("offset", ((pageNum - 1) * PAGE_SIZE).toString());
+      params.set("sortField", sortField);
+      params.set("sortDirection", sortDirection);
       if (searchQuery) params.set("search", searchQuery);
       if (categoryFilter !== "All") params.set("category", categoryFilter);
       if (tagFilter) params.set("tag", tagFilter);
@@ -60,12 +85,14 @@ export function PhotoListContent() {
       const res = await fetch(`/api/photos?${params.toString()}`);
       const data = await res.json();
       setPhotos(data.photos || []);
+      setTotal(data.total || 0);
     } catch {
       console.error("Failed to fetch photos");
     } finally {
       setIsLoading(false);
+      setIsPageLoading(false);
     }
-  }, [searchQuery, categoryFilter, tagFilter]);
+  }, [searchQuery, categoryFilter, tagFilter, sortField, sortDirection]);
 
   const fetchTags = useCallback(async () => {
     try {
@@ -122,10 +149,20 @@ export function PhotoListContent() {
     fetchCoverPhoto();
   }, [fetchTags, fetchCategories, fetchCoverPhoto]);
 
-  // Fetch photos when filters change
+  // Fetch photos on initial load and when filters/sort change
   useEffect(() => {
-    fetchPhotos();
-  }, [fetchPhotos]);
+    setPage(1);
+    fetchPhotos(1, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, categoryFilter, tagFilter, sortField, sortDirection]);
+
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchPhotos(newPage);
+    // Scroll to table top
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleDelete = async (slug: string) => {
     if (!confirm("確定要刪除這張照片嗎？")) return;
@@ -154,7 +191,7 @@ export function PhotoListContent() {
 
   const handleModalSuccess = () => {
     handleModalClose();
-    fetchPhotos();
+    fetchPhotos(page, true);
     fetchTags();
   };
 
@@ -162,6 +199,24 @@ export function PhotoListContent() {
   const allCategories = categories.length > 0
     ? ["All", ...categories.map((c) => c.name)]
     : ["All", "Portrait", "Landscape", "Street", "Nature"];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return null;
+    return sortDirection === "asc" ? (
+      <ChevronUp className="w-4 h-4" />
+    ) : (
+      <ChevronDown className="w-4 h-4" />
+    );
+  };
 
   // Bulk action handlers
   const handleBulkStatusChange = async (status: string) => {
@@ -302,8 +357,75 @@ export function PhotoListContent() {
         disabled={isBulkUpdating}
       />
 
-      {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Table Header with Pagination */}
+      <div ref={tableRef} className="bg-white rounded-lg shadow-sm overflow-hidden min-h-[600px]">
+        {/* Table Toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-stone-50">
+          <div className="text-sm text-stone-600">
+            {isLoading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading...
+              </span>
+            ) : (
+              <span>
+                <span className="font-medium">{total}</span> photos
+                {totalPages > 1 && (
+                  <span className="text-stone-400 ml-1">
+                    · Page {page} of {totalPages}
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1 || isPageLoading}
+                className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Previous page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .map((p, idx, arr) => (
+                    <span key={p} className="flex items-center">
+                      {idx > 0 && arr[idx - 1] !== p - 1 && (
+                        <span className="px-1 text-stone-400 text-sm">···</span>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(p)}
+                        disabled={isPageLoading}
+                        className={`min-w-[28px] h-7 px-2 rounded text-sm font-medium transition-colors ${
+                          p === page
+                            ? "bg-stone-900 text-white"
+                            : "hover:bg-stone-200 text-stone-600"
+                        } disabled:opacity-50`}
+                      >
+                        {p}
+                      </button>
+                    </span>
+                  ))}
+              </div>
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages || isPageLoading}
+                className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Next page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              {isPageLoading && (
+                <Loader2 className="w-4 h-4 animate-spin text-stone-400 ml-2" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Table Content */}
         {isLoading ? (
           <div className="p-8 text-center text-stone-500">Loading...</div>
         ) : photos.length === 0 ? (
@@ -324,20 +446,56 @@ export function PhotoListContent() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Photo
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
-                    Title
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                    onClick={() => handleSort("title")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Title
+                      <SortIcon field="title" />
+                    </div>
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                    onClick={() => handleSort("location")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Location
+                      <SortIcon field="location" />
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
-                    Category
+                    Visibility
+                  </th>
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                    onClick={() => handleSort("category")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Category
+                      <SortIcon field="category" />
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Tags
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
-                    Status
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      <SortIcon field="status" />
+                    </div>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider">
-                    Date
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-stone-500 uppercase tracking-wider cursor-pointer hover:text-stone-700"
+                    onClick={() => handleSort("date")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Date
+                      <SortIcon field="date" />
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-stone-500 uppercase tracking-wider">
                     Actions
@@ -369,10 +527,25 @@ export function PhotoListContent() {
                       <div className="font-medium text-stone-900">
                         {photo.title}
                       </div>
-                      <div className="text-xs text-stone-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {photo.location}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-stone-600 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-stone-400" />
+                        {photo.location || "-"}
                       </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      {photo.visibility === "public" ? (
+                        <span className="flex items-center gap-1 text-xs text-green-700">
+                          <Eye className="w-3 h-3" />
+                          Public
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-xs text-stone-500">
+                          <EyeOff className="w-3 h-3" />
+                          Private
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">

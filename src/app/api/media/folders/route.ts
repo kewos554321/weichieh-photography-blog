@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // 取得所有資料夾（扁平列表）
     if (all) {
       const folders = await prisma.mediaFolder.findMany({
-        orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         include: {
           _count: {
             select: { media: true, children: true },

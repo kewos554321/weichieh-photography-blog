@@ -15,6 +15,8 @@ import {
   List,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Camera,
   ArrowUp,
   Edit2,
@@ -54,6 +56,8 @@ const GRID_CLASSES: Record<GridSize, string> = {
   large: "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
 };
 
+const PAGE_SIZE = 24;
+
 interface MediaLibraryContentProps {
   selectable?: boolean;
   multiSelect?: boolean;
@@ -89,9 +93,10 @@ export function MediaLibraryContent({
   const [currentFolders, setCurrentFolders] = useState<FolderWithCount[]>([]); // Folders in current directory
   const [folderPath, setFolderPath] = useState<BreadcrumbItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.ceil(total / PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [selectedFolder, setSelectedFolder] = useState<string>("");
@@ -116,6 +121,8 @@ export function MediaLibraryContent({
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set()); // "folder:123" or "media:456"
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const lastSelectedIndexRef = useRef<number | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
 
   // Create combined list for shift-select (folders first, then media)
   const combinedItems = useMemo(() => {
@@ -224,21 +231,29 @@ export function MediaLibraryContent({
     lastSelectedIndexRef.current = null;
   }, [isAllItemsSelected, combinedItems]);
 
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const fetchMedia = useCallback(
-    async (pageNum: number, reset: boolean = false) => {
+    async (pageNum: number, isInitial: boolean = false) => {
       try {
-        if (reset) {
+        // Use full loading for initial load, page loading for pagination
+        if (isInitial) {
           setIsLoading(true);
         } else {
-          setIsLoadingMore(true);
+          setIsPageLoading(true);
         }
+
+        // Map frontend sortField to API sortBy
+        const sortByMap: Record<SortField, string> = {
+          filename: "filename",
+          size: "size",
+          updatedAt: "updatedAt",
+          folder: "folderId",
+        };
 
         const params = new URLSearchParams({
           page: pageNum.toString(),
-          limit: "24",
+          limit: PAGE_SIZE.toString(),
+          sortBy: sortByMap[sortField] || "updatedAt",
+          sortOrder: sortDirection,
         });
 
         if (search) params.set("search", search);
@@ -257,21 +272,16 @@ export function MediaLibraryContent({
         const res = await fetch(`/api/media?${params}`);
         const data: MediaListResponse = await res.json();
 
-        if (reset) {
-          setMedia(data.media);
-        } else {
-          setMedia((prev) => [...prev, ...data.media]);
-        }
-        setTotalPages(data.totalPages);
-        setPage(pageNum);
+        setMedia(data.media);
+        setTotal(data.total);
       } catch (error) {
         console.error("Failed to fetch media:", error);
       } finally {
         setIsLoading(false);
-        setIsLoadingMore(false);
+        setIsPageLoading(false);
       }
     },
-    [search, selectedTag, selectedFolder, currentFolderId]
+    [search, selectedTag, selectedFolder, currentFolderId, sortField, sortDirection]
   );
 
   const fetchTags = useCallback(async () => {
@@ -288,7 +298,7 @@ export function MediaLibraryContent({
     try {
       const res = await fetch("/api/media/folders?all=true");
       const data = await res.json();
-      setFolders(data);
+      setFolders(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch folders:", error);
     }
@@ -368,28 +378,13 @@ export function MediaLibraryContent({
     };
   }, [search, selectedTag, selectedFolder, fetchMedia]);
 
-  // Infinite scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !isLoading &&
-          !isLoadingMore &&
-          page < totalPages
-        ) {
-          fetchMedia(page + 1, false);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [page, totalPages, isLoading, isLoadingMore, fetchMedia]);
+  // Handle page change
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    fetchMedia(newPage);
+    // Scroll to table top
+    tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleSelect = (item: Media) => {
     if (!selectable) return;
@@ -439,13 +434,13 @@ export function MediaLibraryContent({
 
   const handleUploadComplete = () => {
     setShowUploader(false);
-    fetchMedia(1, true);
+    fetchMedia(1);
   };
 
   const handleEditComplete = () => {
     setEditingMedia(null);
     // Refresh to get the new/updated media
-    fetchMedia(1, true);
+    fetchMedia(1);
   };
 
   const handleCreateFolder = async () => {
@@ -564,7 +559,7 @@ export function MediaLibraryContent({
       if (failedCount > 0) {
         alert(`有 ${failedCount} 個項目刪除失敗`);
       }
-      fetchMedia(1, true);
+      fetchMedia(1);
       fetchCurrentFolders();
       fetchFolders();
       clearAllSelection();
@@ -613,7 +608,7 @@ export function MediaLibraryContent({
       if (failedCount > 0) {
         alert(`有 ${failedCount} 個項目移動失敗`);
       }
-      fetchMedia(1, true);
+      fetchMedia(1);
       fetchCurrentFolders();
       fetchFolders();
       clearAllSelection();
@@ -651,28 +646,6 @@ export function MediaLibraryContent({
     },
   ];
 
-  // Sort media
-  const sortedMedia = [...media].sort((a, b) => {
-    let comparison = 0;
-    switch (sortField) {
-      case "filename":
-        comparison = a.filename.localeCompare(b.filename);
-        break;
-      case "size":
-        comparison = a.size - b.size;
-        break;
-      case "updatedAt":
-        comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-        break;
-      case "folder":
-        const aFolder = a.folder?.name || "";
-        const bFolder = b.folder?.name || "";
-        comparison = aFolder.localeCompare(bFolder);
-        break;
-    }
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -680,6 +653,7 @@ export function MediaLibraryContent({
       setSortField(field);
       setSortDirection("asc");
     }
+    setPage(1);
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -994,7 +968,73 @@ export function MediaLibraryContent({
 
           {/* List View - Folders & Files */}
           {viewMode === "list" && (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div ref={tableRef} className="bg-white rounded-lg shadow-sm overflow-hidden min-h-[600px]">
+              {/* Table Toolbar */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-stone-50">
+                <div className="text-sm text-stone-600">
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    <span>
+                      <span className="font-medium">{total}</span> files
+                      {totalPages > 1 && (
+                        <span className="text-stone-400 ml-1">
+                          · Page {page} of {totalPages}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handlePageChange(page - 1)}
+                      disabled={page === 1 || isPageLoading}
+                      className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                        .map((p, idx, arr) => (
+                          <span key={p} className="flex items-center">
+                            {idx > 0 && arr[idx - 1] !== p - 1 && (
+                              <span className="px-1 text-stone-400 text-sm">···</span>
+                            )}
+                            <button
+                              onClick={() => handlePageChange(p)}
+                              disabled={isPageLoading}
+                              className={`min-w-[28px] h-7 px-2 rounded text-sm font-medium transition-colors ${
+                                p === page
+                                  ? "bg-stone-900 text-white"
+                                  : "hover:bg-stone-200 text-stone-600"
+                              } disabled:opacity-50`}
+                            >
+                              {p}
+                            </button>
+                          </span>
+                        ))}
+                    </div>
+                    <button
+                      onClick={() => handlePageChange(page + 1)}
+                      disabled={page === totalPages || isPageLoading}
+                      className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      title="Next page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    {isPageLoading && (
+                      <Loader2 className="w-4 h-4 animate-spin text-stone-400 ml-2" />
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-stone-50 border-b border-stone-200">
@@ -1132,7 +1172,7 @@ export function MediaLibraryContent({
                       </tr>
                     ))}
                     {/* File Rows */}
-                    {sortedMedia.map((item) => (
+                    {media.map((item) => (
                       <MediaListItem
                         key={item.id}
                         media={item}
@@ -1151,13 +1191,6 @@ export function MediaLibraryContent({
               </div>
             </div>
           )}
-
-          {/* Load More Trigger */}
-          <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
-            {isLoadingMore && (
-              <Loader2 className="w-6 h-6 animate-spin text-stone-400" />
-            )}
-          </div>
         </>
       )}
 
@@ -1205,7 +1238,7 @@ export function MediaLibraryContent({
           onComplete={() => {
             setShowBatchPublish(false);
             clearAllSelection();
-            fetchMedia(1, true);
+            fetchMedia(1);
           }}
         />
       )}
