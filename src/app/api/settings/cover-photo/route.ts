@@ -65,17 +65,32 @@ export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
 
-    // 如果傳入 photoId，驗證照片存在
+    // 如果傳入 photoId，驗證照片存在且符合條件
     if (data.photoId) {
       const photo = await prisma.photo.findUnique({
         where: { id: data.photoId },
-        select: { id: true, slug: true, src: true, title: true },
+        select: { id: true, slug: true, src: true, title: true, status: true, visibility: true },
       });
 
       if (!photo) {
         return NextResponse.json(
           { error: "Photo not found" },
           { status: 404 }
+        );
+      }
+
+      // 驗證照片必須是 public 且 published
+      if (photo.visibility !== "public") {
+        return NextResponse.json(
+          { error: "只有公開的照片才能設為首頁封面" },
+          { status: 400 }
+        );
+      }
+
+      if (photo.status !== "published") {
+        return NextResponse.json(
+          { error: "只有已發布的照片才能設為首頁封面" },
+          { status: 400 }
         );
       }
 

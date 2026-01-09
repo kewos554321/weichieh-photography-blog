@@ -29,6 +29,7 @@ import {
   Filter,
   Wand2,
   Lock,
+  Star,
 } from "lucide-react";
 
 // Dynamic import for MapPickerModal to avoid SSR issues with Leaflet
@@ -69,6 +70,8 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
   const [articles, setArticles] = useState<ArticleOption[]>([]);
   const [localTags, setLocalTags] = useState<PhotoTag[]>(tags);
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
+  const [isSettingCover, setIsSettingCover] = useState(false);
 
   // 合併資料庫分類和預設分類
   const allCategories = categories.length > 0
@@ -105,6 +108,36 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
       .then((data) => setArticles(data.articles || []))
       .catch(() => setArticles([]));
   }, []);
+
+  // 載入當前首頁封面設定
+  useEffect(() => {
+    fetch("/api/settings/cover-photo")
+      .then((res) => res.json())
+      .then((data) => setCoverPhotoId(data.photoId || null))
+      .catch(() => setCoverPhotoId(null));
+  }, []);
+
+  const handleSetCover = async () => {
+    if (!photo) return;
+    setIsSettingCover(true);
+    try {
+      const res = await fetch("/api/settings/cover-photo", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId: photo.id }),
+      });
+      if (res.ok) {
+        setCoverPhotoId(photo.id);
+      } else {
+        const data = await res.json();
+        alert(data.error || "設定封面失敗");
+      }
+    } catch {
+      alert("設定封面失敗");
+    } finally {
+      setIsSettingCover(false);
+    }
+  };
 
   const isEditMode = !!photo;
 
@@ -1089,6 +1122,52 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
               </label>
             </div>
           </div>
+
+          {/* Cover Photo Setting - Only show in edit mode for public + published photos */}
+          {isEditMode && (
+            <div className="p-4 bg-amber-50 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500" />
+                    首頁封面
+                  </label>
+                  <p className="text-xs text-stone-500 mt-1">
+                    設為首頁的主要展示照片
+                  </p>
+                </div>
+                {coverPhotoId === photo?.id ? (
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-md text-sm">
+                    <Star className="w-4 h-4 fill-current" />
+                    目前封面
+                  </span>
+                ) : formData.visibility === "public" && formData.status === "published" ? (
+                  <button
+                    type="button"
+                    onClick={handleSetCover}
+                    disabled={isSettingCover}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors text-sm disabled:opacity-50"
+                  >
+                    {isSettingCover ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        設定中...
+                      </>
+                    ) : (
+                      <>
+                        <Star className="w-4 h-4" />
+                        設為封面
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="text-xs text-stone-400">
+                    需為公開且已發布的照片
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Progress */}
           {isUploading && (

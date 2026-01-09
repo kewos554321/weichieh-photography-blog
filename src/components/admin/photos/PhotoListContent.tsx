@@ -18,12 +18,12 @@ import {
   EyeOff,
   Clock,
   Upload,
-  Star,
   ChevronUp,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Star,
 } from "lucide-react";
 
 type SortField = "title" | "location" | "category" | "status" | "date";
@@ -43,7 +43,6 @@ export function PhotoListContent() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [coverPhotoId, setCoverPhotoId] = useState<number | null>(null);
-  const [isSettingCover, setIsSettingCover] = useState(false);
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [page, setPage] = useState(1);
@@ -124,25 +123,7 @@ export function PhotoListContent() {
     }
   }, []);
 
-  const handleSetCover = async (photoId: number) => {
-    setIsSettingCover(true);
-    try {
-      const res = await fetch("/api/settings/cover-photo", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoId }),
-      });
-      if (res.ok) {
-        setCoverPhotoId(photoId);
-      }
-    } catch {
-      alert("設定封面失敗");
-    } finally {
-      setIsSettingCover(false);
-    }
-  };
-
-  // Fetch tags, categories, and cover photo only once on mount
+  // Fetch tags, categories, cover photo only once on mount
   useEffect(() => {
     fetchTags();
     fetchCategories();
@@ -524,8 +505,13 @@ export function PhotoListContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="font-medium text-stone-900">
+                      <div className="font-medium text-stone-900 flex items-center gap-1.5">
                         {photo.title}
+                        {coverPhotoId === photo.id && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs" title="首頁封面">
+                            <Star className="w-3 h-3 fill-current" />
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -594,26 +580,6 @@ export function PhotoListContent() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleSetCover(photo.id)}
-                          disabled={isSettingCover || coverPhotoId === photo.id || photo.visibility !== "public"}
-                          className={`p-2 rounded transition-colors ${
-                            coverPhotoId === photo.id
-                              ? "text-amber-500 bg-amber-50"
-                              : photo.visibility !== "public"
-                                ? "text-stone-300 cursor-not-allowed"
-                                : "text-stone-400 hover:text-amber-500 hover:bg-amber-50"
-                          }`}
-                          title={
-                            coverPhotoId === photo.id
-                              ? "目前首頁封面"
-                              : photo.visibility !== "public"
-                                ? "私人照片無法設為首頁封面"
-                                : "設為首頁封面"
-                          }
-                        >
-                          <Star className={`w-4 h-4 ${coverPhotoId === photo.id ? "fill-current" : ""}`} />
-                        </button>
                         <button
                           onClick={() => handleEdit(photo)}
                           className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
