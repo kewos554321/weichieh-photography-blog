@@ -360,13 +360,42 @@ export function MediaLibraryContent({
     fetchFolders();
   }, [fetchTags, fetchFolders]);
 
+  // Fetch folder-related data and media when currentFolderId changes
   useEffect(() => {
-    fetchCurrentFolders();
-    fetchFolderPath();
-    fetchMedia(1, true);
-  }, [fetchCurrentFolders, fetchFolderPath, fetchMedia]);
+    const loadFolderData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch folders and path
+        const urlFolders = currentFolderId
+          ? `/api/media/folders?parentId=${currentFolderId}`
+          : "/api/media/folders?parentId=null";
+        const resFolders = await fetch(urlFolders);
+        const dataFolders = await resFolders.json();
+        setCurrentFolders(dataFolders);
 
-  // Debounced search
+        // Fetch folder path
+        if (currentFolderId) {
+          const resPath = await fetch(`/api/media/folders/${currentFolderId}`);
+          const dataPath = await resPath.json();
+          setFolderPath(dataPath.path || []);
+        } else {
+          setFolderPath([]);
+        }
+
+        // Fetch media
+        setPage(1);
+        await fetchMedia(1, true);
+      } catch (error) {
+        console.error("Failed to load folder data:", error);
+        setIsLoading(false);
+      }
+    };
+
+    loadFolderData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFolderId, sortField, sortDirection]);
+
+  // Debounced search and filters (not folderId)
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -381,7 +410,8 @@ export function MediaLibraryContent({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [search, selectedTag, selectedFolder, fetchMedia]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, selectedTag, selectedFolder]);
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
