@@ -32,6 +32,7 @@ import { FolderCard } from "./FolderCard";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
 import { MediaListItem } from "./MediaListItem";
+import { MediaDeleteConfirmModal } from "./MediaDeleteConfirmModal";
 
 interface FolderWithCount extends MediaFolder {
   _count?: {
@@ -112,6 +113,10 @@ export function MediaLibraryContent({
   const [editingMedia, setEditingMedia] = useState<Media | null>(null);
   const [viewingMedia, setViewingMedia] = useState<Media | null>(null);
   const [showBatchPublish, setShowBatchPublish] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    media: Media;
+    usage: { photos: Array<{ id: number; slug: string; title: string }>; articles: Array<{ id: number; slug: string; title: string }> };
+  } | null>(null);
   // For external picker selection
   const [selectedMedia, setSelectedMedia] = useState<Set<number>>(
     new Set(selectedIds)
@@ -416,18 +421,39 @@ export function MediaLibraryContent({
       const res = await fetch(`/api/media/${item.id}`, { method: "DELETE" });
       if (res.ok) {
         setMedia((prev) => prev.filter((m) => m.id !== item.id));
+        setTotal((prev) => prev - 1);
       } else {
         const data = await res.json();
         if (res.status === 409) {
-          alert(
-            `無法刪除：此媒體正在被使用\n照片: ${data.usage.photos.length} 個\n文章: ${data.usage.articles.length} 個`
-          );
+          // Show modal with usage info
+          setDeleteConfirm({ media: item, usage: data.usage });
         } else {
           alert(data.error || "刪除失敗");
         }
       }
     } catch (error) {
       console.error("Delete failed:", error);
+      alert("刪除失敗");
+    }
+  };
+
+  const handleForceDelete = async (force: boolean) => {
+    if (!deleteConfirm) return;
+
+    try {
+      const res = await fetch(`/api/media/${deleteConfirm.media.id}?force=${force}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setMedia((prev) => prev.filter((m) => m.id !== deleteConfirm.media.id));
+        setTotal((prev) => prev - 1);
+        setDeleteConfirm(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || "刪除失敗");
+      }
+    } catch (error) {
+      console.error("Force delete failed:", error);
       alert("刪除失敗");
     }
   };
@@ -1240,6 +1266,16 @@ export function MediaLibraryContent({
             clearAllSelection();
             fetchMedia(1);
           }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <MediaDeleteConfirmModal
+          media={deleteConfirm.media}
+          usage={deleteConfirm.usage}
+          onClose={() => setDeleteConfirm(null)}
+          onConfirm={handleForceDelete}
         />
       )}
     </div>

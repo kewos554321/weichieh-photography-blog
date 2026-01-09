@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Edit2, Trash2, Check, Sliders, FolderOpen } from "lucide-react";
+import { Edit2, Trash2, Check, Sliders, FolderOpen, Image as ImageIcon, FileText } from "lucide-react";
 import type { Media } from "../types";
 
 interface MediaListItemProps {
@@ -91,8 +91,33 @@ export function MediaListItem({
 
       {/* Filename */}
       <td className="px-4 py-3">
-        <div className="font-medium text-stone-900 max-w-xs truncate" title={media.filename}>
-          {media.filename}
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-stone-900 max-w-xs truncate" title={media.filename}>
+            {media.filename}
+          </span>
+          {/* Usage badges */}
+          {media._usage && (media._usage.photoCount > 0 || media._usage.articleCount > 0) && (
+            <div className="flex items-center gap-1">
+              {media._usage.photoCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-emerald-50 text-emerald-700 rounded"
+                  title={`${media._usage.photoCount} 張照片使用中`}
+                >
+                  <ImageIcon className="w-3 h-3" />
+                  {media._usage.photoCount}
+                </span>
+              )}
+              {media._usage.articleCount > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-violet-50 text-violet-700 rounded"
+                  title={`${media._usage.articleCount} 篇文章使用中`}
+                >
+                  <FileText className="w-3 h-3" />
+                  {media._usage.articleCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         {media.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-0.5">

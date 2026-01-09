@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const [media, total] = await Promise.all([
+    const [mediaList, total] = await Promise.all([
       prisma.media.findMany({
         where,
         orderBy: { [sortBy]: sortOrder },
@@ -67,8 +67,29 @@ export async function GET(request: NextRequest) {
       prisma.media.count({ where }),
     ]);
 
+    // Get usage counts for each media item
+    const mediaWithUsage = await Promise.all(
+      mediaList.map(async (m) => {
+        const [photoCount, articleCount] = await Promise.all([
+          prisma.photo.count({ where: { src: { contains: m.url } } }),
+          prisma.article.count({
+            where: {
+              OR: [
+                { cover: { contains: m.url } },
+                { content: { contains: m.url } },
+              ],
+            },
+          }),
+        ]);
+        return {
+          ...m,
+          _usage: { photoCount, articleCount },
+        };
+      })
+    );
+
     return NextResponse.json({
-      media,
+      media: mediaWithUsage,
       total,
       page,
       limit,

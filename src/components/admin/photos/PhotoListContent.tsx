@@ -233,7 +233,7 @@ export function PhotoListContent() {
           })
         );
       await Promise.all(promises);
-      fetchPhotos();
+      fetchPhotos(1, true);
       clearSelection();
     } catch {
       alert("Failed to update photos");
@@ -253,7 +253,7 @@ export function PhotoListContent() {
           fetch(`/api/photos/${photo.slug}`, { method: "DELETE" })
         );
       await Promise.all(promises);
-      fetchPhotos();
+      fetchPhotos(1, true);
       clearSelection();
     } catch {
       alert("Failed to delete photos");
@@ -653,7 +653,7 @@ export function PhotoListContent() {
           onClose={() => setIsBatchModalOpen(false)}
           onSuccess={() => {
             setIsBatchModalOpen(false);
-            fetchPhotos();
+            fetchPhotos(1, true);
           }}
         />
       )}

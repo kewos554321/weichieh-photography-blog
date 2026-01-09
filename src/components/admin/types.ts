@@ -33,6 +33,10 @@ export interface Media {
   folderId: number | null;
   createdAt: string;
   updatedAt: string;
+  _usage?: {
+    photoCount: number;
+    articleCount: number;
+  };
 }
 
 export interface MediaWithUsage extends Media {

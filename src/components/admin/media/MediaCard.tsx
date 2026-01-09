@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Edit2, Trash2, Check, Sliders } from "lucide-react";
+import { Edit2, Trash2, Check, Sliders, Image as ImageIcon, FileText } from "lucide-react";
 import type { Media } from "../types";
 
 interface MediaCardProps {
@@ -86,6 +86,30 @@ export function MediaCard({
         {selectable && isSelected && !showCheckbox && (
           <div className="absolute top-2 left-2 w-6 h-6 bg-stone-900 rounded-full flex items-center justify-center">
             <Check className="w-4 h-4 text-white" />
+          </div>
+        )}
+
+        {/* Usage badges */}
+        {media._usage && (media._usage.photoCount > 0 || media._usage.articleCount > 0) && (
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            {media._usage.photoCount > 0 && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-emerald-500 text-white rounded shadow-sm"
+                title={`${media._usage.photoCount} 張照片使用中`}
+              >
+                <ImageIcon className="w-3 h-3" />
+                {media._usage.photoCount}
+              </span>
+            )}
+            {media._usage.articleCount > 0 && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs bg-violet-500 text-white rounded shadow-sm"
+                title={`${media._usage.articleCount} 篇文章使用中`}
+              >
+                <FileText className="w-3 h-3" />
+                {media._usage.articleCount}
+              </span>
+            )}
           </div>
         )}
 
