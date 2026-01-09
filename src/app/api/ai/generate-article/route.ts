@@ -4,19 +4,47 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 interface GenerateArticleRequest {
-  imageUrl: string;
+  imageUrl?: string;
+  referenceImageUrls?: string[];
   prompt?: string;
   language?: "zh" | "en";
+}
+
+interface ImageData {
+  mimeType: string;
+  data: string;
+}
+
+// Helper function to fetch and convert image to base64
+async function fetchImageAsBase64(url: string): Promise<ImageData | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const mimeType = contentType.split(";")[0];
+
+    return { mimeType, data: base64 };
+  } catch {
+    return null;
+  }
 }
 
 // POST /api/ai/generate-article - 根據封面圖片生成文章內容
 export async function POST(request: NextRequest) {
   try {
-    const { imageUrl, prompt, language = "zh" } = (await request.json()) as GenerateArticleRequest;
+    const { imageUrl, referenceImageUrls = [], prompt, language = "zh" } = (await request.json()) as GenerateArticleRequest;
 
-    if (!imageUrl) {
+    const hasMainImage = !!imageUrl;
+    const hasReferenceImages = referenceImageUrls.length > 0;
+    const hasPrompt = !!prompt?.trim();
+
+    // 需要至少有圖片或提示詞
+    if (!hasMainImage && !hasReferenceImages && !hasPrompt) {
       return NextResponse.json(
-        { error: "Missing imageUrl" },
+        { error: "需要至少提供封面圖片、參考組圖或提示詞" },
         { status: 400 }
       );
     }
@@ -28,25 +56,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 下載圖片並轉換為 base64
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch image" },
-        { status: 400 }
-      );
+    // 收集所有圖片
+    const images: ImageData[] = [];
+
+    // 下載主圖片
+    if (imageUrl) {
+      const mainImage = await fetchImageAsBase64(imageUrl);
+      if (mainImage) {
+        images.push(mainImage);
+      }
     }
 
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString("base64");
+    // 下載參考圖片
+    if (referenceImageUrls.length > 0) {
+      const referenceImages = await Promise.all(
+        referenceImageUrls.map(url => fetchImageAsBase64(url))
+      );
+      images.push(...referenceImages.filter((img): img is ImageData => img !== null));
+    }
 
-    // 偵測圖片類型
-    const contentType = imageResponse.headers.get("content-type") || "image/jpeg";
-    const mimeType = contentType.split(";")[0];
+    const hasImages = images.length > 0;
+
+    // 建立圖片描述
+    const imageDescription = hasImages
+      ? images.length === 1
+        ? language === "zh" ? "根據這張照片" : "Based on this photo"
+        : language === "zh"
+          ? `根據這 ${images.length} 張照片（第一張是主題照片，其餘是參考照片）`
+          : `Based on these ${images.length} photos (the first is the main photo, others are references)`
+      : language === "zh" ? "根據以下提示" : "Based on the following prompt";
 
     // 建立提示詞
     const systemPrompt = language === "zh"
-      ? `你是一位專業的攝影部落格作家。根據這張照片，生成一篇攝影相關的部落格文章。請提供以下內容：
+      ? `你是一位專業的攝影部落格作家。${imageDescription}，生成一篇攝影相關的部落格文章。請提供以下內容：
 
 1. **title**: 吸引人的文章標題（中文，10-25字）
 2. **slug**: 英文 URL 識別碼（小寫英文、數字、連字號，如：golden-hour-photography-tips）
@@ -62,6 +104,7 @@ export async function POST(request: NextRequest) {
    - 適當使用列表、引用等格式
    - 包含實用的攝影技巧或心得分享
    - 語氣親切但專業
+   ${images.length > 1 ? "- 綜合所有照片的視覺元素和主題撰寫統一的文章" : ""}
 
 請以 JSON 格式回應，不要有其他說明：
 {
@@ -72,7 +115,7 @@ export async function POST(request: NextRequest) {
   "tags": ["標籤1", "標籤2", "標籤3"],
   "content": "## 第一段\\n\\n內容...\\n\\n## 第二段\\n\\n內容..."
 }`
-      : `You are a professional photography blog writer. Based on this photo, generate a photography-related blog article. Please provide:
+      : `You are a professional photography blog writer. ${imageDescription}, generate a photography-related blog article. Please provide:
 
 1. **title**: An engaging article title (10-25 words)
 2. **slug**: URL-friendly identifier (lowercase, hyphens, e.g., golden-hour-photography-tips)
@@ -88,6 +131,7 @@ export async function POST(request: NextRequest) {
    - Use lists, quotes appropriately
    - Include practical photography tips or insights
    - Professional yet approachable tone
+   ${images.length > 1 ? "- Synthesize visual elements and themes from all photos into a cohesive article" : ""}
 
 Respond in JSON format only:
 {
@@ -101,23 +145,30 @@ Respond in JSON format only:
 
     const userPrompt = prompt
       ? language === "zh"
-        ? `根據這張照片撰寫文章，${prompt}`
-        : `Write an article about this photo, ${prompt}`
+        ? hasImages ? `根據照片撰寫文章，${prompt}` : prompt
+        : hasImages ? `Write an article about the photos, ${prompt}` : prompt
       : language === "zh"
-        ? "請根據這張照片撰寫一篇攝影部落格文章"
-        : "Please write a photography blog article based on this photo";
+        ? hasImages ? "請根據照片撰寫一篇攝影部落格文章" : "請撰寫一篇攝影部落格文章"
+        : hasImages ? "Please write a photography blog article based on the photos" : "Please write a photography blog article";
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const result = await model.generateContent([
+    // 建立內容陣列：文字 + 所有圖片
+    const contentParts: (string | { inlineData: { mimeType: string; data: string } })[] = [
       systemPrompt + "\n\n" + userPrompt,
-      {
+    ];
+
+    // 加入所有圖片
+    for (const image of images) {
+      contentParts.push({
         inlineData: {
-          mimeType,
-          data: base64Image,
+          mimeType: image.mimeType,
+          data: image.data,
         },
-      },
-    ]);
+      });
+    }
+
+    const result = await model.generateContent(contentParts);
 
     const response = result.response;
     const text = response.text();
