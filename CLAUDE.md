@@ -1,228 +1,124 @@
 # WeiChieh Photography Blog
 
-A photography blog website built with Next.js.
-
 ## Tech Stack
 
 - **Framework**: Next.js 16.1 (App Router)
 - **Language**: TypeScript (strict mode)
-- **UI**: React 19
 - **Styling**: Tailwind CSS v4
-- **Linting**: ESLint 9 with `eslint-config-next` (core-web-vitals + typescript)
-
-## Project Structure
-
-```
-src/
-  app/
-    layout.tsx           # Root layout with Geist font
-    page.tsx             # Home - Photo wall
-    globals.css          # Global styles with Tailwind
-    photo/
-      [slug]/page.tsx    # Photo detail with story
-    blog/
-      page.tsx           # Blog article list
-      [slug]/page.tsx    # Blog article detail
-    admin/
-      page.tsx           # Admin panel for uploads
-public/                  # Static assets (SVGs, images)
-```
+- **Path Alias**: `@/*` → `./src/*`
 
 ## Commands
 
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
+npm run dev      # Development server
+npm run build    # Build (run before commit)
+npm run lint     # Lint check
+npm test         # Run tests
 ```
-
-## Development Guidelines
-
-### Before Committing
-- Run `npm run build` to ensure the project builds successfully
-- Run `npm run lint` to ensure no ESLint errors
-
-### Code Style
-- Use TypeScript strict mode
-- Follow ESLint rules (core-web-vitals + typescript)
-- Use Tailwind CSS for styling
-- Prefer Server Components by default
-- Use `'use client'` directive only when needed
-
-### Path Aliases
-- `@/*` maps to `./src/*`
-
-### Fonts
-- **English Serif**: Cormorant Garamond (`--font-serif`) - elegant headings
-- **English Sans**: Inter (`--font-sans`) - clean body text
-- **Chinese Serif**: Noto Serif TC / 思源宋體 (`--font-serif-tc`) - headings
-- **Chinese Sans**: Noto Sans TC / 思源黑體 (`--font-sans-tc`) - body text
 
 ---
 
-## UI/UX Design Guidelines
+## UI/UX Design System (重要)
 
 ### Design Philosophy
-- **Japanese Minimalism**: Clean, simple, let photos speak
-- **Cinematic Film Look**: Subtle film grain + vignette overlays
-- **Fuji Film Colors**: Teal shadows + amber highlights
-- **Elegant Typography**: Cormorant Garamond + Noto Serif TC
-- **Subtle Interactions**: Slow 500-700ms transitions
+- **Japanese Minimalism** - 簡潔留白，讓照片說話
+- **Cinematic Film Look** - 電影感底片色調
+- **Fuji Film Colors** - 青色陰影 + 琥珀色高光
+- **Subtle Interactions** - 緩慢優雅的 500-700ms 過渡動畫
 
-### Color Scheme
-```
-Background:     #f7f5f2 (warm cream)
-Text Primary:   stone-700 (#44403c)
-Text Secondary: stone-500 (#78716c)
-Text Muted:     stone-400 (#a8a29e)
-Accent Teal:    #5a8a87 (Fuji film teal)
-Accent Amber:   #c9a77c (warm highlight)
-Borders:        stone-200/50 (subtle)
-```
-
-### Cinematic Effects (globals.css)
-- **Film Grain**: Subtle noise overlay (opacity 0.035)
-- **Vignette**: Radial gradient darkening edges
-- **Image Hover**: Contrast/saturation adjustments
+### Color Palette
+| Token | Value | Usage |
+|-------|-------|-------|
+| Background | `#f7f5f2` | 暖奶油色背景 |
+| Text Primary | `stone-700` | 主要文字 |
+| Text Secondary | `stone-500` | 次要文字 |
+| Text Muted | `stone-400` | 淡化文字 |
+| Accent Teal | `#5a8a87` | Fuji 青色強調 |
+| Accent Amber | `#c9a77c` | 暖色高光 |
+| Border | `stone-200/50` | 細微邊框 |
 
 ### Typography
-- **Logo/Brand**: font-serif, text-2xl, tracking-[0.15em], font-light
-- **Page Titles**: font-serif, text-4xl to text-5xl, font-normal
-- **Body Text**: text-base to text-lg, font-light (300), leading-relaxed
-- **Meta Info**: text-xs, tracking-[0.2em], uppercase, font-light
-- **Transitions**: duration-500 to duration-700 for cinematic feel
+| Element | Classes |
+|---------|---------|
+| Logo | `font-serif text-2xl tracking-[0.15em] font-light` |
+| Page Title | `font-serif text-4xl md:text-5xl font-normal` |
+| Body | `text-base md:text-lg font-light leading-relaxed` |
+| Meta/Label | `text-xs tracking-[0.2em] uppercase font-light` |
 
-### Layout Patterns
+**Fonts**:
+- English: Cormorant Garamond (serif) / Inter (sans)
+- Chinese: Noto Serif TC / Noto Sans TC
 
-#### Photo Wall (Home)
-- Masonry layout with CSS columns
-- 2 columns (mobile) → 3 columns (tablet) → 4 columns (desktop)
-- Small gaps between photos
-- Hover: subtle scale (1.02) + overlay
+### Cinematic Effects (globals.css)
+- **Film Grain**: noise overlay, opacity 0.035
+- **Vignette**: radial gradient edge darkening
+- **Image Hover**: contrast/saturation shift
 
-#### Photo Detail
-- Full-width image centered, max-height 70vh
-- Story below with max-width 2xl for readability
-- Previous/Next navigation at bottom
-
-#### Blog List
-- Alternating image left/right layout
-- Image + excerpt side by side on desktop
-- Stacked on mobile
-
-#### Blog Article
-- Full-width cover image with dark overlay
-- Content max-width 3xl for comfortable reading
-- Headings parsed from markdown (## → h2)
-
-### Responsive Design (Mobile First)
-- **Breakpoints**: `md:` (768px), `lg:` (1024px)
-- **Touch Targets**: Minimum 44px height for buttons/links
-- **Navigation**: Show only Photos + Blog on mobile, hide About/Contact
-- **Padding**: Smaller on mobile (`px-4`), larger on desktop (`px-6`)
-- **Typography**: Slightly smaller on mobile, scale up on desktop
+### Animation Standards
+```
+transition-all duration-500   // 標準過渡
+transition-all duration-700   // 強調過渡
+group-hover:scale-[1.02]      // 圖片 hover 放大
+```
 
 ### Component Patterns
 
-#### Header (Fixed)
+**Header (Fixed)**
 ```tsx
-<header className="fixed top-0 left-0 right-0 z-50 bg-stone-50/90 backdrop-blur-sm border-b border-stone-200">
+className="fixed top-0 inset-x-0 z-50 bg-stone-50/90 backdrop-blur-sm border-b border-stone-200"
 ```
 
-#### Card Hover Effect
+**Card Hover**
 ```tsx
 <div className="group">
   <Image className="transition-transform duration-500 group-hover:scale-[1.02]" />
-  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-500" />
 </div>
 ```
 
-#### Navigation Link (Active State)
+**Active Link**
 ```tsx
-<Link className={isActive ? "text-stone-900" : "text-stone-500 hover:text-stone-900"}>
+className={isActive ? "text-stone-900" : "text-stone-500 hover:text-stone-900"}
 ```
+
+**Button (Primary)**
+```tsx
+className="px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
+```
+
+**Button (Secondary)**
+```tsx
+className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors"
+```
+
+### Responsive Breakpoints
+- Mobile first
+- `md:` 768px (tablet)
+- `lg:` 1024px (desktop)
+- Touch targets: min 44px
+
+### Admin Panel Style
+- Sidebar: `bg-stone-900 text-white`
+- Content: `bg-stone-100`
+- Cards: `bg-white rounded-lg shadow-sm`
+- Mobile: hamburger menu in header bar
 
 ---
 
 ## URL Structure
 
-### Photos
-- List: `/`
-- Detail: `/photo/{slug}` (e.g., `/photo/silent-gaze`)
-- Slug format: lowercase, hyphen-separated, unique
-
-### Blog
-- List: `/blog`
-- Detail: `/blog/{slug}` (e.g., `/blog/mountain-photography-tips`)
-
-### Admin
-- Dashboard: `/admin`
+| Page | URL |
+|------|-----|
+| Home (Photos) | `/` |
+| Photo Detail | `/photo/{slug}` |
+| Blog List | `/blog` |
+| Blog Detail | `/blog/{slug}` |
+| Admin | `/admin/*` |
 
 ---
 
-## Data Structure
+## Code Style
 
-### Photo
-```typescript
-{
-  id: number;
-  slug: string;           // URL-friendly identifier
-  src: string;            // Image URL
-  title: string;          // Display title
-  category: string;       // Portrait | Landscape | Street | Nature
-  location: string;       // Where the photo was taken
-  date: string;           // YYYY-MM-DD format
-  story: string;          // The story behind the photo
-}
-```
-
-### Article
-```typescript
-{
-  id: number;
-  slug: string;           // URL-friendly identifier
-  title: string;          // Article title
-  excerpt: string;        // Short description
-  content: string;        // Full content (markdown supported)
-  cover: string;          // Cover image URL
-  category: string;       // 技巧分享 | 旅行日記 | 攝影思考
-  date: string;           // YYYY-MM-DD format
-}
-```
-
----
-
-## Testing
-
-- **Framework**: Vitest + React Testing Library
-- **Coverage Requirement**: 100% (statements, branches, functions, lines)
-- **Run Tests**: `npm test`
-- **Run Coverage**: `npm run test:coverage`
-
-### Before Committing
-- Run `npm run test:coverage` to ensure 100% coverage
-- All tests must pass before merging
-
-### Test File Convention
-- Test files: `*.test.ts` or `*.test.tsx`
-- Location: `/test` directory (e.g., `test/hooks/useUpload.test.ts`)
-
----
-
-## Future Improvements
-
-### Backend Integration
-The admin panel currently has no backend. Recommended options:
-- **Supabase**: PostgreSQL database + image storage
-- **Firebase**: Firestore + Cloud Storage
-- **Contentful/Sanity**: Headless CMS for content management
-- **Custom API**: Prisma + AWS S3
-
-### Features to Consider
-- Image optimization pipeline
-- SEO meta tags for each page
-- Social sharing cards
-- Comments system
-- Newsletter subscription
-- Dark mode toggle
+- Prefer Server Components, use `'use client'` only when needed
+- Types in `src/components/admin/types.ts`
+- Test files in `/test` directory
