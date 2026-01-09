@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
-    console.error("Create article category error:", error);
+    console.error("Create post category error:", error);
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "Category already exists" },
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { error: "Failed to create article category" },
+      { error: "Failed to create post category" },
       { status: 500 }
     );
   }

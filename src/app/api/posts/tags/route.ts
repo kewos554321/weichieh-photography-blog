@@ -8,16 +8,16 @@ export async function GET() {
       orderBy: { name: "asc" },
       include: {
         _count: {
-          select: { articles: true },
+          select: { posts: true },
         },
       },
     });
 
     return NextResponse.json(tags);
   } catch (error) {
-    console.error("Get article tags error:", error);
+    console.error("Get post tags error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch article tags" },
+      { error: "Failed to fetch post tags" },
       { status: 500 }
     );
   }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(tag, { status: 201 });
   } catch (error) {
-    console.error("Create article tag error:", error);
+    console.error("Create post tag error:", error);
     // 檢查是否為重複名稱錯誤
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { error: "Failed to create article tag" },
+      { error: "Failed to create post tag" },
       { status: 500 }
     );
   }

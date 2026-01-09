@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     // 計算閱讀時間 (假設每分鐘 300 字)
     const readTime = Math.ceil(content.length / 300);
 
-    const article = await prisma.post.create({
+    const post = await prisma.post.create({
       data: {
         slug,
         title,
@@ -115,9 +115,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(article, { status: 201 });
   } catch (error) {
-    console.error("Create article error:", error);
+    console.error("Create post error:", error);
     return NextResponse.json(
-      { error: "Failed to create article" },
+      { error: "Failed to create post" },
       { status: 500 }
     );
   }

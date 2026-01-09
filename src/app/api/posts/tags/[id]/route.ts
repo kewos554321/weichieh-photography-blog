@@ -30,7 +30,7 @@ export async function PUT(
 
     return NextResponse.json(tag);
   } catch (error) {
-    console.error("Update article tag error:", error);
+    console.error("Update post tag error:", error);
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "Tag name already exists" },
@@ -41,7 +41,7 @@ export async function PUT(
       return NextResponse.json({ error: "Tag not found" }, { status: 404 });
     }
     return NextResponse.json(
-      { error: "Failed to update article tag" },
+      { error: "Failed to update post tag" },
       { status: 500 }
     );
   }
@@ -66,12 +66,12 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete article tag error:", error);
+    console.error("Delete post tag error:", error);
     if ((error as { code?: string }).code === "P2025") {
       return NextResponse.json({ error: "Tag not found" }, { status: 404 });
     }
     return NextResponse.json(
-      { error: "Failed to delete article tag" },
+      { error: "Failed to delete post tag" },
       { status: 500 }
     );
   }

@@ -37,7 +37,7 @@ export async function PUT(
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error("Update article category error:", error);
+    console.error("Update post category error:", error);
     if ((error as { code?: string }).code === "P2002") {
       return NextResponse.json(
         { error: "Category name already exists" },
@@ -51,7 +51,7 @@ export async function PUT(
       );
     }
     return NextResponse.json(
-      { error: "Failed to update article category" },
+      { error: "Failed to update post category" },
       { status: 500 }
     );
   }
@@ -91,7 +91,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete article category error:", error);
+    console.error("Delete post category error:", error);
     if ((error as { code?: string }).code === "P2025") {
       return NextResponse.json(
         { error: "Category not found" },
@@ -99,7 +99,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json(
-      { error: "Failed to delete article category" },
+      { error: "Failed to delete post category" },
       { status: 500 }
     );
   }

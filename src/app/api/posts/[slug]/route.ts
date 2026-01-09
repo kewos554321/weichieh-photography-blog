@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const admin = searchParams.get("admin") === "true";
     const includeContext = searchParams.get("context") === "true";
 
-    const article = await prisma.post.findUnique({
+    const post = await prisma.post.findUnique({
       where: { slug },
       include: {
         tags: true,
@@ -40,15 +40,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!article) {
+    if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // 非管理員只能查看已發佈且發佈時間已到的內容
     if (!admin) {
-      const isPublished = article.status === "published";
+      const isPublished = post.status === "published";
       const isScheduleReady =
-        !article.publishedAt || article.publishedAt <= new Date();
+        !post.publishedAt || post.publishedAt <= new Date();
       if (!isPublished || !isScheduleReady) {
         return NextResponse.json(
           { error: "Post not found" },
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       const relatedPosts = await prisma.post.findMany({
         where: {
           ...baseWhere,
-          category: article.category,
+          category: post.category,
           slug: { not: slug },
         },
         select: {
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         prisma.post.findFirst({
           where: {
             ...baseWhere,
-            date: { lt: article.date },
+            date: { lt: post.date },
           },
           select: { slug: true, title: true },
           orderBy: { date: "desc" },
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         prisma.post.findFirst({
           where: {
             ...baseWhere,
-            date: { gt: article.date },
+            date: { gt: post.date },
           },
           select: { slug: true, title: true },
           orderBy: { date: "asc" },
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(article);
   } catch (error) {
-    console.error("Get article error:", error);
+    console.error("Get post error:", error);
     return NextResponse.json(
       { error: "Failed to fetch article" },
       { status: 500 }
@@ -146,7 +146,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       ? Math.ceil(body.content.length / 300)
       : undefined;
 
-    const article = await prisma.post.update({
+    const post = await prisma.post.update({
       where: { slug },
       data: {
         title: body.title,
@@ -177,7 +177,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(article);
   } catch (error) {
-    console.error("Update article error:", error);
+    console.error("Update post error:", error);
     return NextResponse.json(
       { error: "Failed to update article" },
       { status: 500 }
@@ -191,18 +191,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { slug } = await params;
 
     // 先取得文章資訊以獲取封面圖片 URL
-    const article = await prisma.post.findUnique({
+    const post = await prisma.post.findUnique({
       where: { slug },
     });
 
-    if (!article) {
+    if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
     // 從 URL 提取 R2 key
     const publicUrl = process.env.R2_PUBLIC_URL!;
-    if (article.cover.startsWith(publicUrl)) {
-      const key = article.cover.replace(publicUrl + "/", "");
+    if (post.cover.startsWith(publicUrl)) {
+      const key = post.cover.replace(publicUrl + "/", "");
 
       // 刪除 R2 上的封面圖片
       try {
@@ -225,7 +225,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete article error:", error);
+    console.error("Delete post error:", error);
     return NextResponse.json(
       { error: "Failed to delete article" },
       { status: 500 }

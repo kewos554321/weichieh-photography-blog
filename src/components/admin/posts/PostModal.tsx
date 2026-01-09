@@ -19,22 +19,24 @@ import {
   Loader2,
   Image as ImageIcon,
   Wand2,
+  Images,
 } from "lucide-react";
+import { ReferenceImagePicker } from "../media/ReferenceImagePicker";
 
 interface PostModalProps {
-  article: Post | null;
+  post: Post | null;
   tags: PostTag[];
   categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function PostModal({ article, tags, categories, onClose, onSuccess }: PostModalProps) {
+export function PostModal({ post, tags, categories, onClose, onSuccess }: PostModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(
-    article?.cover || null
+    post?.cover || null
   );
   const [newTagName, setNewTagName] = useState("");
   const [localTags, setLocalTags] = useState<PostTag[]>(tags);
@@ -43,6 +45,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
   const [aiPrompt, setAiPrompt] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const contentTextareaRef = { current: null as HTMLTextAreaElement | null };
 
   // 合併資料庫分類和預設分類
@@ -51,20 +54,20 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
     : ["技巧分享", "旅行日記", "攝影思考"];
 
   const [formData, setFormData] = useState({
-    title: article?.title || "",
-    slug: article?.slug || "",
-    category: article?.category || allCategories[0],
-    excerpt: article?.excerpt || "",
-    content: article?.content || "",
+    title: post?.title || "",
+    slug: post?.slug || "",
+    category: post?.category || allCategories[0],
+    excerpt: post?.excerpt || "",
+    content: post?.content || "",
     cover: null as File | null,
-    status: article?.status || ("draft" as "draft" | "scheduled" | "published"),
-    publishedAt: article?.publishedAt
-      ? article.publishedAt.slice(0, 16)
+    status: post?.status || ("draft" as "draft" | "scheduled" | "published"),
+    publishedAt: post?.publishedAt
+      ? post.publishedAt.slice(0, 16)
       : "",
-    tagIds: article?.tags?.map((t) => t.id) || ([] as number[]),
+    tagIds: post?.tags?.map((t) => t.id) || ([] as number[]),
   });
 
-  const isEditMode = !!article;
+  const isEditMode = !!post;
 
   const handleTitleChange = (title: string) => {
     const slug = title
@@ -86,8 +89,8 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: formData.title,
-          type: "article",
-          excludeSlug: isEditMode ? article?.slug : undefined,
+          type: "post",
+          excludeSlug: isEditMode ? post?.slug : undefined,
         }),
       });
 
@@ -144,8 +147,13 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
   // AI 生成文章
   const handleGeneratePost = async () => {
     const imageUrl = coverPreview?.startsWith("data:") ? null : coverPreview;
-    if (!imageUrl && !formData.cover) {
-      setError("請先上傳封面圖片才能使用 AI 生成");
+    const hasValidCover = imageUrl || formData.cover;
+    const hasReferenceImages = referenceImages.length > 0;
+    const hasPrompt = aiPrompt.trim().length > 0;
+
+    // 需要至少有封面、參考圖片或提示詞其中之一
+    if (!hasValidCover && !hasReferenceImages && !hasPrompt) {
+      setError("請上傳封面圖片、參考組圖或輸入提示詞才能使用 AI 生成");
       return;
     }
 
@@ -165,7 +173,8 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageUrl: uploadedUrl,
+          imageUrl: uploadedUrl || undefined,
+          referenceImageUrls: hasReferenceImages ? referenceImages : undefined,
           prompt: aiPrompt || undefined,
           language: "zh",
         }),
@@ -317,7 +326,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
     setError(null);
 
     try {
-      let coverUrl = article?.cover;
+      let coverUrl = post?.cover;
 
       // 上傳新封面
       if (formData.cover) {
@@ -342,7 +351,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
         tagIds: formData.tagIds,
       };
 
-      const url = isEditMode ? `/api/posts/${article.slug}` : "/api/posts";
+      const url = isEditMode ? `/api/posts/${post.slug}` : "/api/posts";
       const method = isEditMode ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -353,7 +362,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to save article");
+        throw new Error(data.error || "Failed to save post");
       }
 
       onSuccess();
@@ -398,13 +407,13 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
                   AI 智慧生成
                 </h3>
                 <p className="text-xs text-stone-500 mt-0.5">
-                  上傳封面圖後，自動生成標題、摘要、分類、Tags 和完整文章
+                  上傳封面圖或參考組圖後，自動生成標題、摘要、分類、Tags 和完整文章
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleGeneratePost}
-                disabled={isGenerating || (!coverPreview && !formData.cover)}
+                disabled={isGenerating || (!coverPreview && !formData.cover && referenceImages.length === 0 && !aiPrompt.trim())}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-md hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {isGenerating ? (
@@ -651,6 +660,22 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
             )}
           </div>
 
+          {/* Reference Images for AI */}
+          <div>
+            <label className="block text-sm font-medium text-stone-700 mb-2 flex items-center gap-2">
+              <Images className="w-4 h-4" />
+              參考組圖（AI 生成用）
+            </label>
+            <p className="text-xs text-stone-500 mb-2">
+              選擇最多 5 張照片作為 AI 生成文章的參考素材
+            </p>
+            <ReferenceImagePicker
+              value={referenceImages}
+              onChange={(urls) => setReferenceImages(urls)}
+              maxCount={5}
+            />
+          </div>
+
           {/* Excerpt */}
           <div>
             <label className="block text-sm font-medium text-stone-700 mb-1">
@@ -823,7 +848,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name="article-status"
+                  name="post-status"
                   value="draft"
                   checked={formData.status === "draft"}
                   onChange={() =>
@@ -837,7 +862,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name="article-status"
+                  name="post-status"
                   value="scheduled"
                   checked={formData.status === "scheduled"}
                   onChange={() =>
@@ -864,7 +889,7 @@ export function PostModal({ article, tags, categories, onClose, onSuccess }: Pos
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
-                  name="article-status"
+                  name="post-status"
                   value="published"
                   checked={formData.status === "published"}
                   onChange={() =>
