@@ -52,11 +52,45 @@ interface ArticleOption {
   title: string;
 }
 
+// 確保「PHOTOS上傳」資料夾存在
+async function ensurePhotosUploadFolder(): Promise<number | null> {
+  try {
+    // 查詢是否已存在
+    const res = await fetch("/api/media/folders?all=true");
+    if (!res.ok) return null;
+    
+    const folders = await res.json();
+    const existingFolder = folders.find((f: { name: string }) => f.name === "PHOTOS上傳");
+    
+    if (existingFolder) {
+      return existingFolder.id;
+    }
+    
+    // 不存在則建立
+    const createRes = await fetch("/api/media/folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "PHOTOS上傳",
+        sortOrder: 0,
+      }),
+    });
+    
+    if (!createRes.ok) return null;
+    
+    const newFolder = await createRes.json();
+    return newFolder.id;
+  } catch {
+    return null;
+  }
+}
+
 export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: PhotoModalProps) {
   const { upload, isUploading, progress } = useUpload();
   const { extract: extractExif, isExtracting: isExtractingExif } = useExifExtraction();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savingStage, setSavingStage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(
     photo?.src || null
   );
@@ -371,6 +405,7 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setSavingStage(null);
 
     try {
       let imageSrc = photo?.src;
@@ -380,12 +415,35 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
         // 從媒體庫選擇的圖片，直接使用
         imageSrc = mediaUrl;
       } else if (formData.image) {
-        // 上傳新圖片
-        const { publicUrl } = await upload(formData.image, "photos");
-        imageSrc = publicUrl;
+        // 上傳新圖片到 Media 的「PHOTOS上傳」資料夾
+        setSavingStage("正在檢查資料夾...");
+        // 1. 確保資料夾存在
+        let folderId = await ensurePhotosUploadFolder();
+
+        setSavingStage("正在上傳圖片到 Media...");
+        // 2. 上傳到 Media
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", formData.image);
+        if (folderId) uploadFormData.append("folderId", folderId.toString());
+        if (formData.title) uploadFormData.append("alt", formData.title);
+
+        const uploadRes = await fetch("/api/media/upload", {
+          method: "POST",
+          body: uploadFormData,
+        });
+
+        if (!uploadRes.ok) {
+          const data = await uploadRes.json();
+          throw new Error(data.error || "上傳失敗");
+        }
+
+        const uploadData = await uploadRes.json();
+        imageSrc = uploadData.url;
       } else if (!isEditMode) {
         throw new Error("Please select an image");
       }
+
+      setSavingStage("正在保存照片資訊...");
 
       const payload = {
         slug: formData.slug,
@@ -425,9 +483,11 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
         throw new Error(data.error || "Failed to save photo");
       }
 
+      setSavingStage("完成！");
       onSuccess();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+      setSavingStage(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -435,7 +495,22 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+        {/* Saving Overlay */}
+        {isSubmitting && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 rounded-lg flex items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-xl border border-stone-200">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-stone-900">{savingStage || "處理中..."}</p>
+                  <p className="text-xs text-stone-500 mt-1">請稍候，不要關閉視窗</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-stone-200">
           <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -444,7 +519,8 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-stone-100 rounded-full"
+            disabled={isSubmitting}
+            className="p-2 hover:bg-stone-100 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5" />
           </button>
@@ -507,7 +583,8 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
                 type="text"
                 value={formData.title}
                 onChange={(e) => handleTitleChange(e.target.value)}
-                className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500"
+                disabled={isSubmitting}
+                className="w-full px-3 py-2 border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-stone-500 disabled:bg-stone-100 disabled:cursor-not-allowed"
                 required
               />
             </div>
@@ -1184,14 +1261,15 @@ export function PhotoModal({ photo, tags, categories, onClose, onSuccess }: Phot
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-700 hover:bg-stone-100 rounded-md transition-colors"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-stone-700 hover:bg-stone-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || isUploading}
-              className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors disabled:bg-stone-400"
+              className="px-4 py-2 bg-stone-900 text-white rounded-md hover:bg-stone-800 transition-colors disabled:bg-stone-400 disabled:cursor-not-allowed"
             >
               {isSubmitting || isUploading ? "Saving..." : isEditMode ? "Save Changes" : "Create Photo"}
             </button>

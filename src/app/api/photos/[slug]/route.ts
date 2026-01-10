@@ -226,10 +226,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/photos/[slug] - 刪除照片（僅刪除資料庫記錄，不刪除 media 檔案）
+// DELETE /api/photos/[slug] - 刪除照片
+// ?deleteMedia=true 時同時刪除關聯的 media 檔案
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { slug } = await params;
+    const { searchParams } = new URL(request.url);
+    const deleteMedia = searchParams.get("deleteMedia") === "true";
 
     const photo = await prisma.photo.findUnique({
       where: { slug },
@@ -239,12 +242,37 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Photo not found" }, { status: 404 });
     }
 
-    // 僅刪除資料庫記錄，保留 media 檔案
+    // 如果要刪除 media，先找到對應的 media 記錄
+    let mediaToDelete = null;
+    if (deleteMedia && photo.src) {
+      mediaToDelete = await prisma.media.findFirst({
+        where: { url: photo.src },
+      });
+    }
+
+    // 刪除 photo 記錄
     await prisma.photo.delete({
       where: { slug },
     });
 
-    return NextResponse.json({ success: true });
+    // 刪除 media（如果有且要求刪除）
+    if (mediaToDelete) {
+      try {
+        // 呼叫 media 刪除 API（使用 force=true 因為 photo 已刪除）
+        const mediaRes = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/media/${mediaToDelete.id}?force=true`,
+          { method: "DELETE" }
+        );
+        if (!mediaRes.ok) {
+          console.error("Failed to delete media:", await mediaRes.text());
+        }
+      } catch (mediaError) {
+        console.error("Failed to delete media:", mediaError);
+        // 繼續，因為 photo 已刪除成功
+      }
+    }
+
+    return NextResponse.json({ success: true, mediaDeleted: !!mediaToDelete });
   } catch (error) {
     console.error("Delete photo error:", error);
     return NextResponse.json(

@@ -24,6 +24,9 @@ import {
   ChevronRight,
   Loader2,
   Star,
+  AlertTriangle,
+  X,
+  ImageOff,
 } from "lucide-react";
 
 type SortField = "title" | "location" | "category" | "status" | "date";
@@ -49,6 +52,8 @@ export function PhotoListContent() {
   const [total, setTotal] = useState(0);
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const tableRef = useRef<HTMLDivElement>(null);
+  const [deleteModal, setDeleteModal] = useState<{ slug: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     selectedCount,
@@ -145,13 +150,24 @@ export function PhotoListContent() {
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleDelete = async (slug: string) => {
-    if (!confirm("確定要刪除這張照片嗎？")) return;
+  const handleDeleteClick = (photo: Photo) => {
+    setDeleteModal({ slug: photo.slug, title: photo.title });
+  };
+
+  const handleDelete = async (deleteMedia: boolean) => {
+    if (!deleteModal) return;
+    setIsDeleting(true);
     try {
-      await fetch(`/api/photos/${slug}`, { method: "DELETE" });
-      setPhotos(photos.filter((p) => p.slug !== slug));
+      const url = deleteMedia
+        ? `/api/photos/${deleteModal.slug}?deleteMedia=true`
+        : `/api/photos/${deleteModal.slug}`;
+      await fetch(url, { method: "DELETE" });
+      setPhotos(photos.filter((p) => p.slug !== deleteModal.slug));
+      setDeleteModal(null);
     } catch {
       alert("刪除失敗");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -587,7 +603,7 @@ export function PhotoListContent() {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(photo.slug)}
+                          onClick={() => handleDeleteClick(photo)}
                           className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -622,6 +638,62 @@ export function PhotoListContent() {
             fetchPhotos(1, true);
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-stone-200">
+              <h3 className="text-lg font-semibold text-stone-900 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                刪除照片
+              </h3>
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={isDeleting}
+                className="p-1 hover:bg-stone-100 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <p className="text-stone-700">
+                確定要刪除「<span className="font-medium">{deleteModal.title}</span>」嗎？
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => handleDelete(false)}
+                  disabled={isDeleting}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  僅刪除貼文
+                  <span className="text-xs text-stone-500">（保留 Media 檔案）</span>
+                </button>
+                <button
+                  onClick={() => handleDelete(true)}
+                  disabled={isDeleting}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ImageOff className="w-4 h-4" />
+                  )}
+                  刪除貼文 + Media 檔案
+                </button>
+              </div>
+              <p className="text-xs text-stone-400 text-center">
+                此操作無法復原
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
