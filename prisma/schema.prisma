@@ -131,6 +131,7 @@ model Media {
   width     Int?
   height    Int?
   alt       String?
+  variants  Json?        // { thumb: "url", sm: "url", md: "url", lg: "url" }
   tags      MediaTag[]
   folder    MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   folderId  Int?

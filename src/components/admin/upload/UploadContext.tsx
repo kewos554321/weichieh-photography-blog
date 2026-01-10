@@ -225,7 +225,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Upload single file
+  // Upload single file (with server-side image processing)
   const uploadSingleFile = useCallback(
     async (
       batch: UploadBatch,
@@ -252,8 +252,6 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        // Get image dimensions
-        const { width, height } = await getImageDimensions(item.file);
         updateItem(batch.id, item.id, { progress: 20 });
 
         if (signal.aborted) {
@@ -261,55 +259,38 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
-        // Create media record and get presigned URL
-        const res = await fetch("/api/media", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: item.file.name,
-            contentType: item.file.type,
-            size: item.file.size,
-            width,
-            height,
-            ...(targetFolderId && { folderId: targetFolderId }),
-          }),
-          signal,
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to get upload URL");
+        // Prepare FormData for server-side processing
+        const formData = new FormData();
+        formData.append("file", item.file);
+        if (targetFolderId) {
+          formData.append("folderId", targetFolderId.toString());
         }
 
-        const { presignedUrl } = await res.json();
-        updateItem(batch.id, item.id, { progress: 40 });
-
-        if (signal.aborted) {
-          updateItem(batch.id, item.id, { status: "paused", progress: 0 });
-          return false;
-        }
-
-        // Upload to R2 with timeout
+        // Upload with timeout - server will process and create multiple sizes
         const uploadController = new AbortController();
         const timeoutId = setTimeout(() => {
           uploadController.abort();
-        }, UPLOAD_TIMEOUT);
+        }, UPLOAD_TIMEOUT * 2); // Double timeout for server processing
 
-        // Combine signals: parent abort and timeout
-        const combinedSignal = signal.aborted ? signal : uploadController.signal;
         signal.addEventListener("abort", () => uploadController.abort());
 
         try {
-          const uploadRes = await fetch(presignedUrl, {
-            method: "PUT",
-            body: item.file,
-            headers: { "Content-Type": item.file.type },
-            signal: combinedSignal,
+          updateItem(batch.id, item.id, { progress: 40 });
+
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: formData,
+            signal: uploadController.signal,
           });
 
           clearTimeout(timeoutId);
-          if (!uploadRes.ok) {
-            throw new Error("Failed to upload file");
+
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || "Failed to upload and process image");
           }
+
+          updateItem(batch.id, item.id, { progress: 90 });
         } catch (err) {
           clearTimeout(timeoutId);
           if (uploadController.signal.aborted && !signal.aborted) {

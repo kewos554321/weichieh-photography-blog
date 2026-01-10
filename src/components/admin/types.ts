@@ -18,6 +18,14 @@ export interface MediaFolder {
   _count?: { media: number };
 }
 
+export interface ImageVariants {
+  thumb: string;  // 256px
+  sm: string;     // 640px
+  md: string;     // 1200px
+  lg: string;     // 1920px
+  original: string;
+}
+
 export interface Media {
   id: number;
   filename: string;
@@ -28,6 +36,7 @@ export interface Media {
   width: number | null;
   height: number | null;
   alt: string | null;
+  variants: ImageVariants | null;
   tags: MediaTag[];
   folder: MediaFolder | null;
   folderId: number | null;
