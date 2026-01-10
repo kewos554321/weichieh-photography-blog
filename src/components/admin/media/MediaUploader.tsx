@@ -256,7 +256,9 @@ export function MediaUploader({ onClose, onComplete, folderId }: MediaUploaderPr
 
   // Start upload
   const handleUpload = useCallback(() => {
-    if (previewFiles.length === 0) return;
+    if (previewFiles.length === 0) {
+      return;
+    }
 
     const filesWithPath = previewFiles.filter((f) => f.folderPath);
     const filesWithoutPath = previewFiles.filter((f) => !f.folderPath);

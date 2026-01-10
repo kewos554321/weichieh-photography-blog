@@ -33,6 +33,7 @@ import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import type { Media, MediaTag, MediaFolder, MediaListResponse } from "../types";
 import { MediaListItem } from "./MediaListItem";
 import { MediaDeleteConfirmModal } from "./MediaDeleteConfirmModal";
+import { useUpload } from "../upload";
 
 interface FolderWithCount extends MediaFolder {
   _count?: {
@@ -76,6 +77,7 @@ export function MediaLibraryContent({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { lastCompletedAt } = useUpload();
 
   // State-based folderId for selectable mode (modals)
   const [stateFolderId, setStateFolderId] = useState<number | null>(null);
@@ -412,6 +414,15 @@ export function MediaLibraryContent({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, selectedTag, selectedFolder]);
+
+  // Refresh when uploads complete
+  useEffect(() => {
+    if (lastCompletedAt) {
+      fetchMedia(page, false);
+      fetchCurrentFolders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastCompletedAt]);
 
   // Handle page change
   const handlePageChange = (newPage: number) => {
