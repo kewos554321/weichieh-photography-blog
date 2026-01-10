@@ -30,12 +30,6 @@ export default function Header() {
               Photos
             </Link>
             <Link
-              href="/albums"
-              className={isActive("/albums") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
-            >
-              Albums
-            </Link>
-            <Link
               href="/blog"
               className={isActive("/blog") ? "text-[var(--accent-teal)]" : "hover:text-[var(--accent-teal)] transition-colors duration-500"}
             >
