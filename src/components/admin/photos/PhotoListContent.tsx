@@ -8,25 +8,29 @@ import { BatchUploadModal } from "./BatchUploadModal";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import {
+  LoadingState,
+  EmptyState,
+  StatusBadge,
+  RowActions,
+  createEditAction,
+  createDeleteAction,
+  Pagination,
+} from "../shared";
+import {
   Plus,
   Search,
-  Edit2,
-  Trash2,
   MapPin,
   Filter,
-  Eye,
-  EyeOff,
-  Clock,
   Upload,
   ChevronUp,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
   Star,
   AlertTriangle,
   X,
   ImageOff,
+  Image as ImageIcon,
+  Trash2,
 } from "lucide-react";
 
 type SortField = "title" | "location" | "category" | "status" | "date";
@@ -356,77 +360,27 @@ export function PhotoListContent() {
 
       {/* Table Header with Pagination */}
       <div ref={tableRef} className="bg-white rounded-lg shadow-sm overflow-hidden min-h-[600px]">
-        {/* Table Toolbar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-stone-200 bg-stone-50">
-          <div className="text-sm text-stone-600">
-            {isLoading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Loading...
-              </span>
-            ) : (
-              <span>
-                <span className="font-medium">{total}</span> photos
-                {totalPages > 1 && (
-                  <span className="text-stone-400 ml-1">
-                    · Page {page} of {totalPages}
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 1 || isPageLoading}
-                className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                title="Previous page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="flex items-center">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                  .map((p, idx, arr) => (
-                    <span key={p} className="flex items-center">
-                      {idx > 0 && arr[idx - 1] !== p - 1 && (
-                        <span className="px-1 text-stone-400 text-sm">···</span>
-                      )}
-                      <button
-                        onClick={() => handlePageChange(p)}
-                        disabled={isPageLoading}
-                        className={`min-w-[28px] h-7 px-2 rounded text-sm font-medium transition-colors ${
-                          p === page
-                            ? "bg-stone-900 text-white"
-                            : "hover:bg-stone-200 text-stone-600"
-                        } disabled:opacity-50`}
-                      >
-                        {p}
-                      </button>
-                    </span>
-                  ))}
-              </div>
-              <button
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page === totalPages || isPageLoading}
-                className="p-1.5 rounded hover:bg-stone-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                title="Next page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              {isPageLoading && (
-                <Loader2 className="w-4 h-4 animate-spin text-stone-400 ml-2" />
-              )}
-            </div>
-          )}
+        {/* Table Toolbar - Using shared Pagination */}
+        <div className="px-4 py-3 border-b border-stone-200 bg-stone-50">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            totalItems={total}
+            itemLabel="photos"
+            isLoading={isLoading || isPageLoading}
+          />
         </div>
 
         {/* Table Content */}
         {isLoading ? (
-          <div className="p-8 text-center text-stone-500">Loading...</div>
+          <LoadingState message="Loading photos..." />
         ) : photos.length === 0 ? (
-          <div className="p-8 text-center text-stone-500">No photos found</div>
+          <EmptyState
+            icon={<ImageIcon className="w-full h-full" />}
+            title="No photos found"
+            description="Try adjusting your search or filters"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -537,17 +491,9 @@ export function PhotoListContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {photo.visibility === "public" ? (
-                        <span className="flex items-center gap-1 text-xs text-green-700">
-                          <Eye className="w-3 h-3" />
-                          Public
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs text-stone-500">
-                          <EyeOff className="w-3 h-3" />
-                          Private
-                        </span>
-                      )}
+                      <StatusBadge
+                        variant={photo.visibility === "public" ? "public" : "private"}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 text-xs bg-stone-100 text-stone-700 rounded">
@@ -567,48 +513,22 @@ export function PhotoListContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {photo.status === "published" ? (
-                        <span className="flex items-center gap-1 text-xs text-green-700">
-                          <Eye className="w-3 h-3" />
-                          Published
-                        </span>
-                      ) : photo.status === "scheduled" ? (
-                        <span className="flex flex-col gap-0.5">
-                          <span className="flex items-center gap-1 text-xs text-amber-600">
-                            <Clock className="w-3 h-3" />
-                            Scheduled
-                          </span>
-                          {photo.publishedAt && (
-                            <span className="text-[10px] text-stone-400">
-                              {new Date(photo.publishedAt).toLocaleString()}
-                            </span>
-                          )}
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs text-stone-500">
-                          <EyeOff className="w-3 h-3" />
-                          Draft
-                        </span>
-                      )}
+                      <StatusBadge
+                        variant={photo.status}
+                        scheduledAt={photo.publishedAt}
+                      />
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-500">
                       {new Date(photo.date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(photo)}
-                          className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(photo)}
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <RowActions
+                        item={photo}
+                        actions={[
+                          createEditAction(handleEdit),
+                          createDeleteAction(handleDeleteClick),
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

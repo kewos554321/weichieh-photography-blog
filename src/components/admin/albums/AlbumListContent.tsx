@@ -2,13 +2,21 @@
 
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Edit2, Trash2, Images, Eye, EyeOff, ChevronUp, ChevronDown, Tag, FolderOpen } from "lucide-react";
+import { Plus, Images, ChevronUp, ChevronDown, Tag, FolderOpen } from "lucide-react";
 import { AlbumModal } from "./AlbumModal";
 import { AlbumCard } from "./AlbumCard";
 import { AlbumFilters } from "./AlbumFilters";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
 import { ViewMode, GridSize, GRID_CLASSES } from "../shared/ViewModeToggle";
+import {
+  LoadingState,
+  EmptyState,
+  StatusBadge,
+  RowActions,
+  createEditAction,
+  createDeleteAction,
+} from "../shared";
 
 interface Photo {
   id: number;
@@ -392,12 +400,12 @@ export function AlbumListContent() {
 
       {/* Content */}
       {isLoading ? (
-        <div className="p-8 text-center text-stone-500">Loading...</div>
+        <LoadingState />
       ) : sortedAlbums.length === 0 ? (
-        <div className="p-8 text-center text-stone-500 bg-white rounded-lg shadow-sm">
-          <Images className="w-16 h-16 mx-auto mb-4 text-stone-300" />
-          <p>{albums.length === 0 ? "No albums yet" : "No albums match your filters"}</p>
-        </div>
+        <EmptyState
+          icon={<Images className="w-full h-full" />}
+          title={albums.length === 0 ? "No albums yet" : "No albums match your filters"}
+        />
       ) : viewMode === "grid" ? (
         /* Grid View */
         <div className={`grid ${GRID_CLASSES[gridSize]} gap-4`}>
@@ -557,36 +565,19 @@ export function AlbumListContent() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      {album.isPublic ? (
-                        <span className="flex items-center gap-1 text-xs text-green-700">
-                          <Eye className="w-3 h-3" />
-                          Public
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-xs text-stone-500">
-                          <EyeOff className="w-3 h-3" />
-                          Private
-                        </span>
-                      )}
+                      <StatusBadge variant={album.isPublic ? "public" : "private"} />
                     </td>
                     <td className="hidden md:table-cell px-4 py-3 text-sm text-stone-500">
                       {album.createdAt ? new Date(album.createdAt).toLocaleDateString() : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEdit(album)}
-                          className="p-2 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(album)}
-                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <RowActions
+                        item={album}
+                        actions={[
+                          createEditAction(handleEdit),
+                          createDeleteAction(handleDelete),
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
