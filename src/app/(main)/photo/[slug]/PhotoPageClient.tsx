@@ -256,29 +256,6 @@ export default function PhotoPageClient({ slug }: { slug: string }) {
               </div>
             )}
 
-            {/* Albums - 收錄於 */}
-            {photo.albums && photo.albums.filter(a => a.album.isPublic).length > 0 && (
-              <div className="mb-8">
-                <p className="text-xs tracking-widest uppercase text-stone-400 mb-3">Included in</p>
-                <div className="flex flex-wrap gap-2">
-                  {photo.albums
-                    .filter(a => a.album.isPublic)
-                    .map((albumPhoto) => (
-                      <Link
-                        key={albumPhoto.album.id}
-                        href={`/albums/${albumPhoto.album.slug}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-[#6b9e9a]/10 text-[#6b9e9a] rounded-full hover:bg-[#6b9e9a]/20 transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        {albumPhoto.album.name}
-                      </Link>
-                    ))}
-                </div>
-              </div>
-            )}
-
             {/* Like & Share */}
             <div className="flex items-center gap-6">
               {/* Like Button */}

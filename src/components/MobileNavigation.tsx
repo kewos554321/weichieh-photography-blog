@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Camera, BookOpen, MapPin, FolderOpen } from "lucide-react";
+import { Camera, BookOpen, MapPin, User } from "lucide-react";
 
 const navItems = [
   { href: "/", icon: Camera, label: "Photos" },
-  { href: "/albums", icon: FolderOpen, label: "Albums" },
   { href: "/blog", icon: BookOpen, label: "Blog" },
   { href: "/map", icon: MapPin, label: "Map" },
+  { href: "/about", icon: User, label: "About" },
 ];
 
 export function MobileNavigation() {

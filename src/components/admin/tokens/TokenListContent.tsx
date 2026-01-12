@@ -19,6 +19,11 @@ import {
 import { TokenModal } from "./TokenModal";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { BulkActionBar, BulkAction } from "../common/BulkActionBar";
+import {
+  LoadingState,
+  EmptyState,
+  StatusBadge,
+} from "../shared";
 
 interface AccessToken {
   id: string;
@@ -283,12 +288,12 @@ export function TokenListContent() {
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-stone-500">Loading...</div>
+          <LoadingState />
         ) : tokens.length === 0 ? (
-          <div className="p-8 text-center text-stone-500">
-            <Key className="w-16 h-16 mx-auto mb-4 text-stone-300" />
-            <p>No access tokens yet</p>
-          </div>
+          <EmptyState
+            icon={<Key className="w-full h-full" />}
+            title="No access tokens yet"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -401,19 +406,10 @@ export function TokenListContent() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {!token.isActive ? (
-                        <span className="px-2 py-0.5 text-xs bg-stone-100 text-stone-500 rounded">
-                          Disabled
-                        </span>
-                      ) : isExpired(token.expiresAt) ? (
-                        <span className="px-2 py-0.5 text-xs bg-red-100 text-red-600 rounded">
-                          Expired
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
-                          Active
-                        </span>
-                      )}
+                      <StatusBadge
+                        variant={!token.isActive ? "disabled" : isExpired(token.expiresAt) ? "expired" : "active"}
+                        showIcon={false}
+                      />
                     </td>
                     <td className="px-4 py-3 text-sm text-stone-500">
                       {token.expiresAt ? (

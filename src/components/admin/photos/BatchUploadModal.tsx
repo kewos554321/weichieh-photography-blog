@@ -23,6 +23,37 @@ interface UploadFile {
   error?: string;
 }
 
+// 確保「PHOTOS上傳」資料夾存在
+async function ensurePhotosUploadFolder(): Promise<number | null> {
+  try {
+    const res = await fetch("/api/media/folders?all=true");
+    if (!res.ok) return null;
+    
+    const folders = await res.json();
+    const existingFolder = folders.find((f: { name: string }) => f.name === "PHOTOS上傳");
+    
+    if (existingFolder) {
+      return existingFolder.id;
+    }
+    
+    const createRes = await fetch("/api/media/folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "PHOTOS上傳",
+        sortOrder: 0,
+      }),
+    });
+    
+    if (!createRes.ok) return null;
+    
+    const newFolder = await createRes.json();
+    return newFolder.id;
+  } catch {
+    return null;
+  }
+}
+
 export function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) {
   const { uploadBatch, isUploading, progress } = useUpload();
   const [files, setFiles] = useState<UploadFile[]>([]);
@@ -76,23 +107,42 @@ export function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) 
     setFiles((prev) => prev.map((f) => ({ ...f, status: "uploading" })));
 
     try {
-      const results = await uploadBatch(
-        files.map((f) => f.file),
-        "photos",
-        (completed) => {
-          setCurrentFileIndex(completed);
-          setFiles((prev) =>
-            prev.map((f, i) =>
-              i < completed ? { ...f, status: "done" } : f
-            )
-          );
-        }
-      );
+      // 1. 確保資料夾存在
+      const folderId = await ensurePhotosUploadFolder();
 
-      // 建立資料庫記錄
-      const createPromises = results.map(async (result, index) => {
-        const file = files[index].file;
-        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      // 2. 批次上傳到 Media
+      const uploadPromises = files.map(async (uploadFile, index) => {
+        const formData = new FormData();
+        formData.append("file", uploadFile.file);
+        if (folderId) formData.append("folderId", folderId.toString());
+
+        const res = await fetch("/api/media/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Failed to upload ${uploadFile.file.name}`);
+        }
+
+        const data = await res.json();
+        
+        // 更新進度
+        setCurrentFileIndex(index + 1);
+        setFiles((prev) =>
+          prev.map((f, i) =>
+            i === index ? { ...f, status: "done", publicUrl: data.url } : f
+          )
+        );
+
+        return { ...data, fileName: uploadFile.file.name };
+      });
+
+      const results = await Promise.all(uploadPromises);
+
+      // 3. 建立資料庫記錄
+      const createPromises = results.map(async (result) => {
+        const nameWithoutExt = result.fileName.replace(/\.[^/.]+$/, "");
         const title = nameWithoutExt.replace(/[-_]/g, " ");
         const slug = nameWithoutExt
           .toLowerCase()
@@ -106,7 +156,7 @@ export function BatchUploadModal({ onClose, onSuccess }: BatchUploadModalProps) 
           body: JSON.stringify({
             slug,
             title,
-            src: result.publicUrl,
+            src: result.url,
             category: "Portrait",
             location: "未設定",
             date: new Date().toISOString().split("T")[0],

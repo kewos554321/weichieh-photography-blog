@@ -41,6 +41,7 @@ interface UploadContextValue {
   isUploading: boolean;
   isPaused: boolean;
   isMinimized: boolean;
+  lastCompletedAt: number | null;
 
   // Actions
   addFiles: (files: File[], baseFolderId: number | null, batchName?: string) => void;
@@ -166,13 +167,15 @@ async function createFolderHierarchy(
 // Provider
 // ============================================================================
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 3; // Reduced to avoid R2 rate limiting
 const MAX_RETRIES = 3;
+const UPLOAD_TIMEOUT = 60000; // 60 seconds timeout per file
 
 export function UploadProvider({ children }: { children: React.ReactNode }) {
   const [batches, setBatches] = useState<UploadBatch[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [lastCompletedAt, setLastCompletedAt] = useState<number | null>(null);
 
   const isProcessingRef = useRef(false);
   const folderCacheRef = useRef(new Map<string, number>());
@@ -222,7 +225,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  // Upload single file
+  // Upload single file (with server-side image processing)
   const uploadSingleFile = useCallback(
     async (
       batch: UploadBatch,
@@ -249,8 +252,6 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           );
         }
 
-        // Get image dimensions
-        const { width, height } = await getImageDimensions(item.file);
         updateItem(batch.id, item.id, { progress: 20 });
 
         if (signal.aborted) {
@@ -258,46 +259,48 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
-        // Create media record and get presigned URL
-        const res = await fetch("/api/media", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            filename: item.file.name,
-            contentType: item.file.type,
-            size: item.file.size,
-            width,
-            height,
-            ...(targetFolderId && { folderId: targetFolderId }),
-          }),
-          signal,
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to get upload URL");
+        // Prepare FormData for server-side processing
+        const formData = new FormData();
+        formData.append("file", item.file);
+        if (targetFolderId) {
+          formData.append("folderId", targetFolderId.toString());
         }
 
-        const { presignedUrl } = await res.json();
-        updateItem(batch.id, item.id, { progress: 40 });
+        // Upload with timeout - server will process and create multiple sizes
+        const uploadController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          uploadController.abort();
+        }, UPLOAD_TIMEOUT * 2); // Double timeout for server processing
 
-        if (signal.aborted) {
-          updateItem(batch.id, item.id, { status: "paused", progress: 0 });
-          return false;
-        }
+        signal.addEventListener("abort", () => uploadController.abort());
 
-        // Upload to R2
-        const uploadRes = await fetch(presignedUrl, {
-          method: "PUT",
-          body: item.file,
-          headers: { "Content-Type": item.file.type },
-          signal,
-        });
+        try {
+          updateItem(batch.id, item.id, { progress: 40 });
 
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload file");
+          const res = await fetch("/api/media/upload", {
+            method: "POST",
+            body: formData,
+            signal: uploadController.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error || "Failed to upload and process image");
+          }
+
+          updateItem(batch.id, item.id, { progress: 90 });
+        } catch (err) {
+          clearTimeout(timeoutId);
+          if (uploadController.signal.aborted && !signal.aborted) {
+            throw new Error("Upload timeout - file too large or slow connection");
+          }
+          throw err;
         }
 
         updateItem(batch.id, item.id, { status: "done", progress: 100 });
+        setLastCompletedAt(Date.now());
         return true;
       } catch (error) {
         if ((error as Error).name === "AbortError") {
@@ -305,7 +308,6 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
-        console.error("Upload error:", error);
         updateItem(batch.id, item.id, {
           status: "error",
           progress: 0,
@@ -318,7 +320,10 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     [updateItem]
   );
 
-  // Process upload queue
+  // Process upload queue - use ref to get latest batches
+  const batchesRef = useRef<UploadBatch[]>([]);
+  batchesRef.current = batches;
+
   const processQueue = useCallback(async () => {
     if (isProcessingRef.current || isPaused) return;
     isProcessingRef.current = true;
@@ -326,30 +331,53 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     abortControllerRef.current = new AbortController();
     const signal = abortControllerRef.current.signal;
 
+    // Continuous upload: maintain CONCURRENCY active uploads at all times
+    const activeUploads = new Set<Promise<void>>();
+
+    const getNextPendingItem = (): { batch: UploadBatch; item: UploadItem } | null => {
+      for (const batch of batchesRef.current) {
+        for (const item of batch.items) {
+          if (item.status === "pending") {
+            return { batch, item };
+          }
+        }
+      }
+      return null;
+    };
+
+    const startUpload = async (batch: UploadBatch, item: UploadItem): Promise<void> => {
+      await uploadSingleFile(batch, item, signal);
+    };
+
     try {
-      // Get all pending items across all batches
-      const pendingItems: Array<{ batch: UploadBatch; item: UploadItem }> = [];
+      // Initial: start up to CONCURRENCY uploads
+      let nextItem = getNextPendingItem();
 
-      setBatches((currentBatches) => {
-        currentBatches.forEach((batch) => {
-          batch.items.forEach((item) => {
-            if (item.status === "pending") {
-              pendingItems.push({ batch, item });
-            }
-          });
-        });
-        return currentBatches;
-      });
-
-      // Process in batches of CONCURRENCY
-      for (let i = 0; i < pendingItems.length; i += CONCURRENCY) {
+      while (nextItem || activeUploads.size > 0) {
         if (signal.aborted) break;
 
-        const chunk = pendingItems.slice(i, i + CONCURRENCY);
-        await Promise.all(
-          chunk.map(({ batch, item }) => uploadSingleFile(batch, item, signal))
-        );
+        // Fill up to CONCURRENCY slots
+        while (nextItem && activeUploads.size < CONCURRENCY) {
+          const { batch, item } = nextItem;
+          // Mark as uploading immediately to prevent re-picking
+          item.status = "uploading";
+
+          const uploadPromise = startUpload(batch, item).finally(() => {
+            activeUploads.delete(uploadPromise);
+          });
+          activeUploads.add(uploadPromise);
+
+          nextItem = getNextPendingItem();
+        }
+
+        // Wait for at least one to complete before continuing
+        if (activeUploads.size > 0) {
+          await Promise.race(activeUploads);
+          // Check for new pending items after each completion
+          nextItem = getNextPendingItem();
+        }
       }
+
     } finally {
       isProcessingRef.current = false;
       abortControllerRef.current = null;
@@ -362,7 +390,10 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
       b.items.some((i) => i.status === "pending")
     );
     if (hasPending && !isPaused) {
-      processQueue();
+      // Use setTimeout to ensure state is fully committed before processing
+      setTimeout(() => {
+        processQueue();
+      }, 0);
     }
   }, [batches, isPaused, processQueue]);
 
@@ -433,7 +464,9 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
         baseFolderId,
       };
 
-      setBatches((prev) => [...prev, batch]);
+      setBatches((prev) => {
+        return [...prev, batch];
+      });
       setIsMinimized(false);
     },
     []
@@ -575,6 +608,7 @@ export function UploadProvider({ children }: { children: React.ReactNode }) {
     isUploading,
     isPaused,
     isMinimized,
+    lastCompletedAt,
     addFiles,
     addFilesWithPath,
     pauseAll,
