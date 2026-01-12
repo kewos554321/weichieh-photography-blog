@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { defaultWatermarkSettings, WatermarkSettings } from "@/lib/watermark";
+import { clearWatermarkCache } from "@/lib/serverWatermark";
 
 const SETTINGS_KEY = "watermark";
 
@@ -71,6 +72,9 @@ export async function PUT(request: Request) {
         value: newSettings,
       },
     });
+
+    // 清除伺服器端快取
+    clearWatermarkCache();
 
     return NextResponse.json(newSettings);
   } catch (error) {

@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getServerWatermarkSettings, applyServerWatermark } from "./serverWatermark";
 
 const S3 = new S3Client({
   region: "auto",
@@ -74,6 +75,12 @@ export async function processAndUploadImage(
   baseKey: string,
   originalFilename: string
 ): Promise<ProcessedImage> {
+  // 套用浮水印（如果啟用）
+  const watermarkSettings = await getServerWatermarkSettings();
+  if (watermarkSettings.enabled) {
+    buffer = await applyServerWatermark(buffer, watermarkSettings);
+  }
+
   // 取得原圖資訊
   const metadata = await sharp(buffer).metadata();
   const originalWidth = metadata.width || 1920;
